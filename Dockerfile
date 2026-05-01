@@ -2,10 +2,14 @@
 FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
-COPY frontend/package*.json ./
+
+# Copy all frontend files first
+COPY frontend/ ./
+
+# Install dependencies
 RUN npm ci
 
-COPY frontend/ ./
+# Build Next.js
 RUN npm run build
 
 # Build stage for backend
