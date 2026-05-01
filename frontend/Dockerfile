@@ -9,7 +9,9 @@ COPY frontend/package*.json ./
 COPY frontend/tsconfig.json ./
 COPY frontend/next.config.js ./
 COPY frontend/src ./src
-COPY frontend/public ./public
+
+# Create public directory if needed
+RUN mkdir -p public
 
 # Install dependencies
 RUN npm ci
