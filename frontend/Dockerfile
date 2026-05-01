@@ -8,10 +8,10 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 COPY next.config.js ./
+COPY postcss.config.js ./
+COPY tailwind.config.ts ./
 COPY src ./src
-
-# Create public directory if needed
-RUN mkdir -p public
+COPY public ./public
 
 # Install dependencies
 RUN npm ci
