@@ -21,8 +21,9 @@ Backend and frontend run as **separate services** in Railway.
 3. Select "Deploy from GitHub repo"
 4. Authorize Railway to access your GitHub account
 5. Select the StudentManager repository
-6. Set **root directory** to `backend` (in settings)
-7. Deploy
+6. **DO NOT set root directory** (leave empty - Railway will use repo root)
+7. Set up PostgreSQL plugin (will auto-set DATABASE_URL)
+8. Deploy
 
 #### Service 2: Frontend (Next.js)
 1. In the same Railway project, click "Add Service"
@@ -47,9 +48,9 @@ For Celery task queue:
 ### 4. Configure Backend Service
 
 **Settings → Backend Service:**
-- Root directory: `backend`
-- Build command: (leave default or `pip install -r requirements.txt`)
-- Start command: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+- Root directory: (leave empty)
+- Build command: (leave default - Railway detects Dockerfile automatically)
+- Start command: (leave default - Procfile takes precedence)
 
 **Environment Variables:**
 ```
