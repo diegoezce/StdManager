@@ -270,12 +270,23 @@ docker exec goplanify_backend python manage.py migrate
 - [ ] Configure CORS properly
 - [ ] Run security checks: `python manage.py check --deploy`
 
-### Recommended Deployment
+### Deploy to Railway
 
-- **Backend**: AWS ECS, Heroku, or DigitalOcean App Platform
-- **Frontend**: Vercel, Netlify
-- **Database**: AWS RDS PostgreSQL
-- **Redis**: AWS ElastiCache
+Railway is the recommended deployment platform. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+Quick start:
+1. Push code to GitHub
+2. Connect repository to Railway
+3. Configure environment variables
+4. Add PostgreSQL and Redis plugins
+5. Deploy
+
+### Alternative Deployment Options
+
+- **Backend**: AWS ECS, Heroku, DigitalOcean App Platform, Railway
+- **Frontend**: Vercel, Netlify (can also deploy from Railway)
+- **Database**: AWS RDS PostgreSQL, Railway PostgreSQL
+- **Redis**: AWS ElastiCache, Railway Redis
 
 ## Contributing
 
