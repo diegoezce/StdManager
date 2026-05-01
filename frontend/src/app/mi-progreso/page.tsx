@@ -32,8 +32,8 @@ export default function MiProgresoPage() {
       try {
         if (!user) return
 
-        const response = await apiClient.axiosInstance.get(`/students/${user.id}/progress/`)
-        setProgress(response.data)
+        const progress = await apiClient.getStudentProgress(user.id)
+        setProgress(progress)
       } catch (error) {
         console.error('Failed to load progress:', error)
       } finally {

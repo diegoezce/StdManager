@@ -43,8 +43,8 @@ export default function GroupDetailsPage() {
         const groupResponse = await apiClient.getGroup(groupId)
         setGroup(groupResponse)
 
-        const enrollmentsResponse = await apiClient.axiosInstance.get('/enrollments/')
-        const enrollments = enrollmentsResponse.data.results || enrollmentsResponse.data
+        const enrollmentsData = await apiClient.getEnrollments()
+        const enrollments = enrollmentsData.results || enrollmentsData
         const studentEnrollment = enrollments.find(
           (e: Enrollment) => e.group === groupId && e.status === 'active'
         )

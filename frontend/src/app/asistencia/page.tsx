@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { Group, Enrollment } from '@/types'
@@ -64,8 +63,8 @@ export default function AttendancePage() {
       if (!selectedGroup) return
 
       try {
-        const response = await apiClient.axiosInstance.get(`/groups/${selectedGroup.id}/`)
-        const enrollmentsData = response.data.enrollments || []
+        const groupData = await apiClient.getGroup(selectedGroup.id)
+        const enrollmentsData = groupData.enrollments || []
         setEnrollments(enrollmentsData)
 
         const initialAttendance: { [key: string]: string } = {}

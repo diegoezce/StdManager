@@ -34,9 +34,9 @@ export default function MisGruposPage() {
       try {
         if (!user) return
 
-        const response = await apiClient.axiosInstance.get('/enrollments/')
-        const data = response.data.results || response.data
-        setEnrollments(data.filter((e: Enrollment) => e.status === 'active'))
+        const data = await apiClient.getEnrollments()
+        const enrollmentsData = data.results || data
+        setEnrollments(enrollmentsData.filter((e: Enrollment) => e.status === 'active'))
       } catch (error) {
         console.error('Failed to load enrollments:', error)
       } finally {

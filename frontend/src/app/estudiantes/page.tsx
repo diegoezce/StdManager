@@ -70,7 +70,7 @@ export default function EstudiantesPage() {
     setIsSaving(true)
 
     try {
-      await apiClient.axiosInstance.post('/auth/register/', {
+      await apiClient.register({
         email: formData.email,
         first_name: formData.first_name,
         last_name: formData.last_name,

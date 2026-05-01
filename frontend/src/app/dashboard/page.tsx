@@ -39,10 +39,8 @@ export default function DashboardPage() {
         setOrganization(org)
 
         if (org && hasRole(['owner', 'manager'])) {
-          const statsResponse = await apiClient.axiosInstance.get(
-            `/organizations/${org.slug}/stats/`
-          )
-          setStats(statsResponse.data)
+          const stats = await apiClient.getOrganizationStats(org.slug)
+          setStats(stats)
         }
       } catch (error) {
         console.error('Failed to load dashboard:', error)
