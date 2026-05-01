@@ -8,7 +8,6 @@ WORKDIR /app
 COPY frontend/package*.json ./
 COPY frontend/tsconfig.json ./
 COPY frontend/next.config.js ./
-COPY frontend/.env* ./
 COPY frontend/src ./src
 COPY frontend/public ./public
 
