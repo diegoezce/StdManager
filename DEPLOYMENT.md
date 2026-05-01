@@ -11,41 +11,68 @@ GoPlanify can be deployed to Railway with minimal configuration.
 
 ## Deployment Steps
 
-### 1. Connect GitHub Repository
+### 1. Create Two Services in Railway
 
+Backend and frontend run as **separate services** in Railway.
+
+#### Service 1: Backend (Django)
 1. Log in to Railway
 2. Click "New Project"
 3. Select "Deploy from GitHub repo"
 4. Authorize Railway to access your GitHub account
 5. Select the StudentManager repository
-6. Click "Deploy"
+6. Set **root directory** to `backend` (in settings)
+7. Deploy
 
-### 2. Configure Database
+#### Service 2: Frontend (Next.js)
+1. In the same Railway project, click "Add Service"
+2. Select "Deploy from GitHub repo"
+3. Select the StudentManager repository
+4. Set **root directory** to `frontend`
+5. Deploy
 
-Railway will automatically create a PostgreSQL database. Set these environment variables:
+### 2. Add PostgreSQL Plugin
 
-```
-DATABASE_URL=<Railway provides automatically>
-```
+1. In Railway project, click "Add"
+2. Select "PostgreSQL"
+3. Railway will automatically set `DATABASE_URL` environment variable
 
-### 3. Configure Redis (optional)
+### 3. Add Redis Plugin (optional)
 
 For Celery task queue:
+1. Click "Add"
+2. Select "Redis"
+3. Railway will automatically set `REDIS_URL` environment variable
 
-```
-REDIS_URL=<Railway provides automatically>
-```
+### 4. Configure Backend Service
 
-### 4. Set Environment Variables
+**Settings → Backend Service:**
+- Root directory: `backend`
+- Build command: (leave default or `pip install -r requirements.txt`)
+- Start command: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
 
-In Railway project settings, set these variables:
-
+**Environment Variables:**
 ```
 DEBUG=False
-SECRET_KEY=<generate a strong random string>
-ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
-NEXT_PUBLIC_API_URL=https://yourdomain.com/api/v1
+SECRET_KEY=<generate with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())">
+ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com,*.railway.app
+NEXT_PUBLIC_API_URL=https://backend-domain.railway.app/api/v1
 TIME_ZONE=UTC
+CORS_ALLOWED_ORIGINS=https://frontend-domain.railway.app
+```
+
+### 5. Configure Frontend Service
+
+**Settings → Frontend Service:**
+- Root directory: `frontend`
+- Build command: `npm run build`
+- Start command: `npm start`
+- Port: `3000`
+
+**Environment Variables:**
+```
+NEXT_PUBLIC_API_URL=https://backend-domain.railway.app/api/v1
+NODE_ENV=production
 ```
 
 Generate a SECRET_KEY with:

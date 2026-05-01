@@ -1,18 +1,5 @@
-# Build stage for frontend
-FROM node:18-alpine AS frontend-builder
+# Production Dockerfile for Django Backend
 
-WORKDIR /app/frontend
-
-# Copy all frontend files first
-COPY frontend/ ./
-
-# Install dependencies
-RUN npm ci
-
-# Build Next.js
-RUN npm run build
-
-# Build stage for backend
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -24,20 +11,20 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend
-COPY backend/ ./backend/
+# Copy backend application
+COPY backend/ ./
 
-# Copy frontend build
-COPY --from=frontend-builder /app/frontend/.next /app/frontend/.next
-COPY --from=frontend-builder /app/frontend/public /app/frontend/public
-COPY --from=frontend-builder /app/frontend/package*.json /app/frontend/
-
-WORKDIR /app/backend
-
-# Run migrations and collect static files
+# Collect static files
 RUN python manage.py collectstatic --noinput || true
 
-# Start both services
-CMD gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/auth/users/me/').read()"
+
+# Run Gunicorn
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]
