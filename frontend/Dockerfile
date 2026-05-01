@@ -4,11 +4,11 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy all necessary files
-COPY frontend/package*.json ./
-COPY frontend/tsconfig.json ./
-COPY frontend/next.config.js ./
-COPY frontend/src ./src
+# Copy all necessary files (build context is /frontend when root dir is set in Railway)
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY next.config.js ./
+COPY src ./src
 
 # Create public directory if needed
 RUN mkdir -p public
