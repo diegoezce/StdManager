@@ -82,11 +82,22 @@ def register(request):
 
     data['organization'] = user.organization.id
     data['role'] = data.get('role', 'student')
+    data['is_active'] = True
 
     serializer = UserCreateUpdateSerializer(data=data)
     if serializer.is_valid():
         try:
             user_obj = serializer.save()
+
+            # If creating a student role, create the Student profile
+            if data.get('role') == 'student':
+                from apps.blast.models import Student
+                Student.objects.create(
+                    user=user_obj,
+                    organization=user.organization,
+                    english_level=data.get('english_level', 'beginner')
+                )
+
             return Response(
                 UserSerializer(user_obj).data,
                 status=status.HTTP_201_CREATED

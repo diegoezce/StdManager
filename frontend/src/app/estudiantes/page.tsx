@@ -15,6 +15,7 @@ export default function EstudiantesPage() {
   const [groups, setGroups] = useState<Group[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedStudentForEnroll, setSelectedStudentForEnroll] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
@@ -95,6 +96,55 @@ export default function EstudiantesPage() {
     }
   }
 
+  const handleEditStudent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingId) return
+    setIsSaving(true)
+
+    try {
+      await apiClient.updateStudent(editingId, {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+      })
+
+      const response = await apiClient.getStudents()
+      setStudents(response.results || response)
+      setEditingId(null)
+      setFormData({
+        email: '',
+        first_name: '',
+        last_name: '',
+        english_level: 'beginner',
+      })
+    } catch (error) {
+      console.error('Failed to update student:', error)
+      alert('Failed to update student')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const startEditing = (student: Student) => {
+    setEditingId(student.id)
+    setFormData({
+      email: student.user_email || '',
+      first_name: student.user_first_name || '',
+      last_name: student.user_last_name || '',
+      english_level: student.english_level || 'beginner',
+    })
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
+    setFormData({
+      email: '',
+      first_name: '',
+      last_name: '',
+      english_level: 'beginner',
+    })
+  }
+
   const handleEnrollStudent = async (studentId: string, groupId: string) => {
     try {
       await apiClient.enrollStudent(groupId, studentId)
@@ -129,19 +179,23 @@ export default function EstudiantesPage() {
               <h1 className="text-2xl font-bold text-gray-900">Manage Students</h1>
               <p className="text-gray-600">Add and manage student accounts</p>
             </div>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
-            >
-              {showForm ? '✕ Cancel' : '+ Create Student'}
-            </button>
+            {!editingId && (
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
+              >
+                {showForm ? '✕ Cancel' : '+ Create Student'}
+              </button>
+            )}
           </div>
 
-          {/* Create Form */}
-          {showForm && (
+          {/* Create/Edit Form */}
+          {(showForm || editingId) && (
             <div className="bg-white rounded-lg shadow mb-8 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">New Student</h2>
-              <form onSubmit={handleCreateStudent} className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">
+                {editingId ? 'Edit Student' : 'New Student'}
+              </h2>
+              <form onSubmit={editingId ? handleEditStudent : handleCreateStudent} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -183,28 +237,30 @@ export default function EstudiantesPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      English Level
-                    </label>
-                    <select
-                      value={formData.english_level}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          english_level: e.target.value as any,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="beginner">Beginner</option>
-                      <option value="elementary">Elementary</option>
-                      <option value="pre-intermediate">Pre-Intermediate</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="upper-intermediate">Upper Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
-                  </div>
+                  {!editingId && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        English Level
+                      </label>
+                      <select
+                        value={formData.english_level}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            english_level: e.target.value as any,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="beginner">Beginner</option>
+                        <option value="elementary">Elementary</option>
+                        <option value="pre-intermediate">Pre-Intermediate</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="upper-intermediate">Upper Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 pt-4">
                   <button
@@ -212,11 +268,14 @@ export default function EstudiantesPage() {
                     disabled={isSaving}
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
                   >
-                    {isSaving ? '⏳ Creating...' : '✓ Create Student'}
+                    {isSaving ? '⏳ Saving...' : editingId ? '✓ Update Student' : '✓ Create Student'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => {
+                      setShowForm(false)
+                      cancelEditing()
+                    }}
                     className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-2 px-4 rounded-lg transition"
                   >
                     Cancel
@@ -259,7 +318,7 @@ export default function EstudiantesPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {selectedStudentForEnroll === student.id ? (
+                      {editingId === student.id ? null : selectedStudentForEnroll === student.id ? (
                         <div className="flex flex-col gap-2 min-w-[250px]">
                           <select
                             onChange={(e) => {
@@ -287,12 +346,20 @@ export default function EstudiantesPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setSelectedStudentForEnroll(student.id)}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
-                        >
-                          Enroll →
-                        </button>
+                        <>
+                          <button
+                            onClick={() => startEditing(student)}
+                            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium transition"
+                          >
+                            ✎ Edit
+                          </button>
+                          <button
+                            onClick={() => setSelectedStudentForEnroll(student.id)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                          >
+                            Enroll →
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

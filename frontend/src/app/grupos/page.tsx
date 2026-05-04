@@ -15,6 +15,7 @@ export default function GruposPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     level: 'beginner',
@@ -99,6 +100,78 @@ export default function GruposPage() {
     }
   }
 
+  const handleEditGroup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingId) return
+    setIsSaving(true)
+
+    try {
+      await apiClient.updateGroup(editingId, {
+        name: formData.name,
+        level: formData.level,
+        teacher: formData.teacher,
+        max_students: formData.max_students,
+        description: formData.description,
+        start_date: formData.start_date,
+      })
+
+      const response = await apiClient.getGroups()
+      setGroups(response.results || response)
+      setEditingId(null)
+      setFormData({
+        name: '',
+        level: 'beginner',
+        teacher: '',
+        max_students: 20,
+        description: '',
+        start_date: '',
+      })
+    } catch (error) {
+      console.error('Failed to update group:', error)
+      alert('Failed to update group')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const startEditing = (group: Group) => {
+    setEditingId(group.id)
+    setFormData({
+      name: group.name || '',
+      level: group.level || 'beginner',
+      teacher: group.teacher_id || '',
+      max_students: group.max_students || 20,
+      description: group.description || '',
+      start_date: group.start_date || '',
+    })
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
+    setShowForm(false)
+    setFormData({
+      name: '',
+      level: 'beginner',
+      teacher: '',
+      max_students: 20,
+      description: '',
+      start_date: '',
+    })
+  }
+
+  const handleDeleteGroup = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this group?')) return
+
+    try {
+      await apiClient.deleteGroup(id)
+      const response = await apiClient.getGroups()
+      setGroups(response.results || response)
+    } catch (error) {
+      console.error('Failed to delete group:', error)
+      alert('Failed to delete group')
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -121,19 +194,23 @@ export default function GruposPage() {
               <h1 className="text-2xl font-bold text-gray-900">Manage Groups</h1>
               <p className="text-gray-600">Create and manage class groups</p>
             </div>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
-            >
-              {showForm ? '✕ Cancel' : '+ Create Group'}
-            </button>
+            {!editingId && (
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
+              >
+                {showForm ? '✕ Cancel' : '+ Create Group'}
+              </button>
+            )}
           </div>
 
-          {/* Create Form */}
-          {showForm && (
+          {/* Create/Edit Form */}
+          {(showForm || editingId) && (
             <div className="bg-white rounded-lg shadow mb-8 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">New Group</h2>
-              <form onSubmit={handleCreateGroup} className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">
+                {editingId ? 'Edit Group' : 'New Group'}
+              </h2>
+              <form onSubmit={editingId ? handleEditGroup : handleCreateGroup} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -237,7 +314,10 @@ export default function GruposPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => {
+                      setShowForm(false)
+                      cancelEditing()
+                    }}
                     className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-2 px-4 rounded-lg transition"
                   >
                     Cancel
@@ -284,10 +364,24 @@ export default function GruposPage() {
                     </p>
                   </div>
                   <div className="border-t pt-4">
-                    <p className="text-2xl font-bold text-blue-600 mb-2">
+                    <p className="text-2xl font-bold text-blue-600 mb-4">
                       {group.available_spots}
                     </p>
-                    <p className="text-xs text-gray-600">spots available</p>
+                    <p className="text-xs text-gray-600 mb-4">spots available</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEditing(group)}
+                        className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium transition"
+                      >
+                        ✎ Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGroup(group.id)}
+                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+                      >
+                        🗑 Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

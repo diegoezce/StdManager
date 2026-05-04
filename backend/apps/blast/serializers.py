@@ -25,12 +25,32 @@ class TeacherSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
+    email = serializers.EmailField(source='user.email', required=False)
     corporate_client_name = serializers.CharField(source='corporate_client.company_name', read_only=True)
 
     class Meta:
         model = Student
-        fields = ('id', 'user', 'user_email', 'user_name', 'corporate_client', 'corporate_client_name', 'english_level', 'enrollment_date', 'is_active', 'created_at')
-        read_only_fields = ('id', 'enrollment_date', 'created_at')
+        fields = ('id', 'user', 'user_email', 'user_name', 'first_name', 'last_name', 'email', 'corporate_client', 'corporate_client_name', 'english_level', 'enrollment_date', 'is_active', 'created_at')
+        read_only_fields = ('id', 'user', 'user_email', 'user_name', 'enrollment_date', 'created_at')
+
+    def update(self, instance, validated_data):
+        user_data = {}
+        if 'user' in validated_data:
+            user_data = validated_data.pop('user')
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+
+        return instance
 
 
 class GroupSerializer(serializers.ModelSerializer):
