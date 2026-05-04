@@ -74,6 +74,12 @@ def register(request):
         )
 
     data = request.data.copy()
+    email = data.get('email', '')
+
+    # Auto-generate username from email if not provided
+    if not data.get('username'):
+        data['username'] = email.split('@')[0]
+
     data['organization'] = user.organization.id
     data['role'] = data.get('role', 'student')
 
