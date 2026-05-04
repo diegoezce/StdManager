@@ -60,6 +60,12 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Student.objects.filter(corporate_client__contact_email=user.email)
         return Student.objects.none()
 
+    def get_permissions(self):
+        """Allow managers/owners to create, update, delete students"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsOwnerOrManager()]
+        return super().get_permissions()
+
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization)
 
@@ -93,6 +99,14 @@ class GroupViewSet(viewsets.ModelViewSet):
         elif user.role == 'teacher':
             return Group.objects.filter(teacher__user=user)
         return Group.objects.filter(organization=user.organization)
+
+    def get_permissions(self):
+        """Allow managers/owners and teachers to update their groups"""
+        if self.action in ['create', 'destroy']:
+            return [IsAuthenticated(), IsOwnerOrManager()]
+        elif self.action in ['update', 'partial_update']:
+            return [IsAuthenticated(), IsTeacher()]
+        return super().get_permissions()
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, created_by=self.request.user)
