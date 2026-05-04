@@ -37,6 +37,9 @@ export interface Student {
   user: string
   user_email: string
   user_name: string
+  email?: string
+  first_name?: string
+  last_name?: string
   corporate_client: string | null
   corporate_client_name: string | null
   english_level: 'beginner' | 'elementary' | 'pre-intermediate' | 'intermediate' | 'upper-intermediate' | 'advanced'

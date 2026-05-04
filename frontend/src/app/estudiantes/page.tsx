@@ -128,9 +128,9 @@ export default function EstudiantesPage() {
   const startEditing = (student: Student) => {
     setEditingId(student.id)
     setFormData({
-      email: student.user_email || '',
-      first_name: student.user_first_name || '',
-      last_name: student.user_last_name || '',
+      email: student.email || student.user_email || '',
+      first_name: student.first_name || '',
+      last_name: student.last_name || '',
       english_level: student.english_level || 'beginner',
     })
   }
