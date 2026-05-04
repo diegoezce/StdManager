@@ -33,17 +33,18 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
         email = validated_data.get('email', '')
 
-        # Generate username from email if not provided
+        # Ensure username exists (required by CustomUser)
         if 'username' not in validated_data or not validated_data.get('username'):
             validated_data['username'] = email.split('@')[0]
 
-        user = User.objects.create_user(**validated_data)
+        # Use create_user which handles password properly
         if password:
-            user.set_password(password)
+            user = User.objects.create_user(password=password, **validated_data)
         else:
-            # Generate random password if not provided
-            user.set_password(User.objects.make_random_password())
-        user.save()
+            # Create with random password
+            random_pass = User.objects.make_random_password()
+            user = User.objects.create_user(password=random_pass, **validated_data)
+
         return user
 
     def update(self, instance, validated_data):
