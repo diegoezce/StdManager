@@ -17,11 +17,16 @@ export default function EstudiantesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [selectedStudentForEnroll, setSelectedStudentForEnroll] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    email: string
+    first_name: string
+    last_name: string
+    english_level: Student['english_level']
+  }>({
     email: '',
     first_name: '',
     last_name: '',
-    english_level: 'beginner' as const,
+    english_level: 'beginner',
   })
   const [isSaving, setIsSaving] = useState(false)
 
