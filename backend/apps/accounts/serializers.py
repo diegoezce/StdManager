@@ -26,15 +26,24 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'password', 'role', 'organization', 'is_active')
+        fields = ('id', 'email', 'first_name', 'last_name', 'password', 'role', 'organization', 'is_active', 'username')
         read_only_fields = ('id',)
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
+        email = validated_data.get('email', '')
+
+        # Generate username from email if not provided
+        if 'username' not in validated_data or not validated_data.get('username'):
+            validated_data['username'] = email.split('@')[0]
+
         user = User.objects.create_user(**validated_data)
         if password:
             user.set_password(password)
-            user.save()
+        else:
+            # Generate random password if not provided
+            user.set_password(User.objects.make_random_password())
+        user.save()
         return user
 
     def update(self, instance, validated_data):

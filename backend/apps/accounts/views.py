@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -60,3 +60,34 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def me(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def register(request):
+    """Create a new student account (manager/owner only)"""
+    user = request.user
+    if user.role not in ['owner', 'manager']:
+        return Response(
+            {'error': 'Only owners and managers can create users'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    data = request.data.copy()
+    data['organization'] = user.organization.id
+    data['role'] = data.get('role', 'student')
+
+    serializer = UserCreateUpdateSerializer(data=data)
+    if serializer.is_valid():
+        try:
+            user_obj = serializer.save()
+            return Response(
+                UserSerializer(user_obj).data,
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
