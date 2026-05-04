@@ -139,7 +139,7 @@ export default function GruposPage() {
     setFormData({
       name: group.name || '',
       level: group.level || 'beginner',
-      teacher: group.teacher_id || '',
+      teacher: group.teacher || '',
       max_students: group.max_students || 20,
       description: group.description || '',
       start_date: group.start_date || '',
