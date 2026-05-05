@@ -6,7 +6,7 @@ interface User {
   email: string
   first_name: string
   last_name: string
-  role: 'super_admin' | 'owner' | 'manager' | 'teacher' | 'corporate_client' | 'student'
+  role: 'super_admin' | 'owner' | 'manager' | 'admin' | 'teacher' | 'corporate_client' | 'student'
   organization_id: string
 }
 
