@@ -171,6 +171,30 @@ class APIClient {
     const response = await this.axiosInstance.post('/auth/register/', data)
     return response.data
   }
+
+  async getUsers() {
+    const response = await this.axiosInstance.get('/auth/users/')
+    return response.data
+  }
+
+  async getUser(id: string) {
+    const response = await this.axiosInstance.get(`/auth/users/${id}/`)
+    return response.data
+  }
+
+  async updateUser(id: string, data: any) {
+    const response = await this.axiosInstance.put(`/auth/users/${id}/`, data)
+    return response.data
+  }
+
+  async deleteUser(id: string) {
+    await this.axiosInstance.delete(`/auth/users/${id}/`)
+  }
+
+  async resetUserPassword(id: string) {
+    const response = await this.axiosInstance.post(`/auth/users/${id}/reset_password/`)
+    return response.data
+  }
 }
 
 export const apiClient = new APIClient()

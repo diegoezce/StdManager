@@ -4,31 +4,37 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
-import { Student, Group } from '@/types'
+import { User } from '@/types'
 import { Navbar } from '@/components/Navbar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
-export default function EstudiantesPage() {
+export default function UsuariosPage() {
   const router = useRouter()
   const { user, me } = useAuth()
-  const [students, setStudents] = useState<Student[]>([])
-  const [groups, setGroups] = useState<Group[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [selectedStudentForEnroll, setSelectedStudentForEnroll] = useState<string | null>(null)
-  const [formData, setFormData] = useState<{
-    email: string
-    first_name: string
-    last_name: string
-    english_level: Student['english_level']
-  }>({
+  const [formData, setFormData] = useState({
     email: '',
     first_name: '',
     last_name: '',
-    english_level: 'beginner',
+    role: 'student' as const,
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [passwordReset, setPasswordReset] = useState<{
+    userId: string
+    email: string
+    temporaryPassword: string
+  } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const ROLES = [
+    { value: 'admin', label: 'Admin' },
+    { value: 'teacher', label: 'Teacher' },
+    { value: 'student', label: 'Student' },
+    { value: 'corporate_client', label: 'Corporate Client' },
+  ]
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -49,18 +55,10 @@ export default function EstudiantesPage() {
       try {
         if (!user) return
 
-        const [studentsResponse, groupsResponse] = await Promise.all([
-          apiClient.getStudents(),
-          apiClient.getGroups(),
-        ])
-
-        const studentsData = studentsResponse.results || studentsResponse
-        const groupsData = groupsResponse.results || groupsResponse
-
-        setStudents(studentsData)
-        setGroups(groupsData)
+        const response = await apiClient.getUsers()
+        setUsers(response.results || response)
       } catch (error) {
-        console.error('Failed to load data:', error)
+        console.error('Failed to load users:', error)
       } finally {
         setIsLoading(false)
       }
@@ -71,7 +69,7 @@ export default function EstudiantesPage() {
     }
   }, [user])
 
-  const handleCreateStudent = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
 
@@ -81,84 +79,110 @@ export default function EstudiantesPage() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         password: Math.random().toString(36).slice(-8),
-        role: 'student',
+        role: formData.role,
       })
 
-      const response = await apiClient.getStudents()
-      setStudents(response.results || response)
+      const response = await apiClient.getUsers()
+      setUsers(response.results || response)
       setShowForm(false)
       setFormData({
         email: '',
         first_name: '',
         last_name: '',
-        english_level: 'beginner',
+        role: 'student',
       })
     } catch (error) {
-      console.error('Failed to create student:', error)
-      alert('Failed to create student')
+      console.error('Failed to create user:', error)
+      alert('Failed to create user')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleEditStudent = async (e: React.FormEvent) => {
+  const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingId) return
     setIsSaving(true)
 
     try {
-      await apiClient.updateStudent(editingId, {
+      await apiClient.updateUser(editingId, {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
+        role: formData.role,
       })
 
-      const response = await apiClient.getStudents()
-      setStudents(response.results || response)
+      const response = await apiClient.getUsers()
+      setUsers(response.results || response)
       setEditingId(null)
       setFormData({
         email: '',
         first_name: '',
         last_name: '',
-        english_level: 'beginner',
+        role: 'student',
       })
     } catch (error) {
-      console.error('Failed to update student:', error)
-      alert('Failed to update student')
+      console.error('Failed to update user:', error)
+      alert('Failed to update user')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const startEditing = (student: Student) => {
-    setEditingId(student.id)
+  const startEditing = (u: User) => {
+    setEditingId(u.id)
     setFormData({
-      email: student.email || student.user_email || '',
-      first_name: student.first_name || '',
-      last_name: student.last_name || '',
-      english_level: student.english_level || 'beginner',
+      email: u.email || '',
+      first_name: u.first_name || '',
+      last_name: u.last_name || '',
+      role: u.role as any,
     })
   }
 
   const cancelEditing = () => {
     setEditingId(null)
+    setShowForm(false)
     setFormData({
       email: '',
       first_name: '',
       last_name: '',
-      english_level: 'beginner',
+      role: 'student',
     })
   }
 
-  const handleEnrollStudent = async (studentId: string, groupId: string) => {
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) return
+
     try {
-      await apiClient.enrollStudent(groupId, studentId)
-      const response = await apiClient.getStudents()
-      setStudents(response.results || response)
-      setSelectedStudentForEnroll(null)
+      await apiClient.deleteUser(id)
+      const response = await apiClient.getUsers()
+      setUsers(response.results || response)
     } catch (error) {
-      console.error('Failed to enroll student:', error)
-      alert('Failed to enroll student')
+      console.error('Failed to delete user:', error)
+      alert('Failed to delete user')
+    }
+  }
+
+  const handleResetPassword = async (id: string) => {
+    try {
+      const response = await apiClient.resetUserPassword(id)
+      setPasswordReset({
+        userId: response.id,
+        email: response.email,
+        temporaryPassword: response.temporary_password,
+      })
+      setCopied(false)
+    } catch (error) {
+      console.error('Failed to reset password:', error)
+      alert('Failed to reset password')
+    }
+  }
+
+  const copyPasswordToClipboard = () => {
+    if (passwordReset) {
+      navigator.clipboard.writeText(passwordReset.temporaryPassword)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -181,15 +205,15 @@ export default function EstudiantesPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Manage Students</h1>
-              <p className="text-gray-600">Add and manage student accounts</p>
+              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+              <p className="text-gray-600">Create and manage user accounts</p>
             </div>
             {!editingId && (
               <button
                 onClick={() => setShowForm(!showForm)}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
               >
-                {showForm ? '✕ Cancel' : '+ Create Student'}
+                {showForm ? '✕ Cancel' : '+ Create User'}
               </button>
             )}
           </div>
@@ -198,9 +222,9 @@ export default function EstudiantesPage() {
           {(showForm || editingId) && (
             <div className="bg-white rounded-lg shadow mb-8 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
-                {editingId ? 'Edit Student' : 'New Student'}
+                {editingId ? 'Edit User' : 'New User'}
               </h2>
-              <form onSubmit={editingId ? handleEditStudent : handleCreateStudent} className="space-y-4">
+              <form onSubmit={editingId ? handleEditUser : handleCreateUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -240,32 +264,31 @@ export default function EstudiantesPage() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={editingId ? true : false}
                     />
                   </div>
-                  {!editingId && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        English Level
-                      </label>
-                      <select
-                        value={formData.english_level}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            english_level: e.target.value as any,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="beginner">Beginner</option>
-                        <option value="elementary">Elementary</option>
-                        <option value="pre-intermediate">Pre-Intermediate</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="upper-intermediate">Upper Intermediate</option>
-                        <option value="advanced">Advanced</option>
-                      </select>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Role
+                    </label>
+                    <select
+                      required
+                      value={formData.role}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          role: e.target.value as any,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {ROLES.map((role) => (
+                        <option key={role.value} value={role.value}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-4">
                   <button
@@ -274,8 +297,8 @@ export default function EstudiantesPage() {
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
                   >
                     {editingId
-                      ? isSaving ? '⏳ Saving...' : '✓ Save Student'
-                      : isSaving ? '⏳ Creating...' : '✓ Create Student'}
+                      ? isSaving ? '⏳ Saving...' : '✓ Save User'
+                      : isSaving ? '⏳ Creating...' : '✓ Create User'}
                   </button>
                   <button
                     type="button"
@@ -292,79 +315,60 @@ export default function EstudiantesPage() {
             </div>
           )}
 
-          {/* Students List */}
-          {students.length > 0 ? (
+          {/* Users List */}
+          {users.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {students.map((student) => (
-                <div key={student.id} className="bg-white rounded-lg shadow p-6">
+              {users.map((u) => (
+                <div key={u.id} className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-gray-900">
-                        {student.user_name}
+                        {u.first_name} {u.last_name}
                       </h3>
                       <div className="space-y-1 text-sm text-gray-600 mt-2">
                         <p>
-                          <span className="font-medium">Email:</span> {student.user_email}
+                          <span className="font-medium">Email:</span> {u.email}
                         </p>
                         <p>
-                          <span className="font-medium">Level:</span>{' '}
-                          {student.english_level}
+                          <span className="font-medium">Role:</span>{' '}
+                          <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {u.role}
+                          </span>
                         </p>
                         <p>
                           <span className="font-medium">Status:</span>{' '}
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              student.is_active
+                              u.is_active
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {student.is_active ? 'Active' : 'Inactive'}
+                            {u.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      {editingId === student.id ? null : selectedStudentForEnroll === student.id ? (
-                        <div className="flex flex-col gap-2 min-w-[250px]">
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleEnrollStudent(student.id, e.target.value)
-                              }
-                            }}
-                            defaultValue=""
-                            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select group to enroll...</option>
-                            {groups
-                              .filter((g) => g.available_spots > 0)
-                              .map((group) => (
-                                <option key={group.id} value={group.id}>
-                                  {group.name} ({group.available_spots} spots)
-                                </option>
-                              ))}
-                          </select>
-                          <button
-                            onClick={() => setSelectedStudentForEnroll(null)}
-                            className="text-sm text-gray-600 hover:text-gray-900"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      {editingId === u.id ? null : (
                         <>
                           <button
-                            onClick={() => startEditing(student)}
+                            onClick={() => startEditing(u)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
                           >
                             ✎ Edit
                           </button>
                           <button
-                            onClick={() => setSelectedStudentForEnroll(student.id)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                            onClick={() => handleResetPassword(u.id)}
+                            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-sm font-medium transition"
                           >
-                            Enroll →
+                            🔑 Reset Password
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+                          >
+                            🗑 Delete
                           </button>
                         </>
                       )}
@@ -375,12 +379,48 @@ export default function EstudiantesPage() {
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-              <p className="text-lg mb-2">No students yet</p>
-              <p className="text-sm">Create a new student to get started</p>
+              <p className="text-lg mb-2">No users yet</p>
+              <p className="text-sm">Create a new user to get started</p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {passwordReset && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Password Reset</h3>
+            <p className="text-gray-600 mb-4">
+              Temporary password for <span className="font-medium">{passwordReset.email}</span>:
+            </p>
+            <div className="bg-gray-100 p-4 rounded-lg mb-6 flex items-center justify-between">
+              <code className="text-lg font-mono font-bold text-gray-900 break-all">
+                {passwordReset.temporaryPassword}
+              </code>
+              <button
+                onClick={copyPasswordToClipboard}
+                className={`ml-3 px-3 py-2 rounded text-sm font-medium transition whitespace-nowrap ${
+                  copied
+                    ? 'bg-green-600 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {copied ? '✓ Copied' : '📋 Copy'}
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Share this temporary password with the user. They should change it after logging in.
+            </p>
+            <button
+              onClick={() => setPasswordReset(null)}
+              className="w-full px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold rounded-lg transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   )
 }

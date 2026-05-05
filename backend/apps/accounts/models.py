@@ -8,6 +8,7 @@ class CustomUser(AbstractUser):
         ('super_admin', 'Super Admin'),
         ('owner', 'Owner'),
         ('manager', 'Manager'),
+        ('admin', 'Admin'),
         ('teacher', 'Teacher'),
         ('corporate_client', 'Corporate Client'),
         ('student', 'Student'),

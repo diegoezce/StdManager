@@ -16,13 +16,14 @@ export function Navbar() {
   if (!user) return null
 
   const navItems: { label: string; href: string; roles: string[] }[] = [
-    { label: 'Dashboard', href: '/dashboard', roles: ['owner', 'manager', 'teacher', 'student', 'corporate_client'] },
-    { label: 'Grupos', href: '/grupos', roles: ['owner', 'manager'] },
-    { label: 'Estudiantes', href: '/estudiantes', roles: ['owner', 'manager'] },
-    { label: 'Asistencia', href: '/asistencia', roles: ['teacher', 'manager'] },
+    { label: 'Dashboard', href: '/dashboard', roles: ['owner', 'manager', 'admin', 'teacher', 'student', 'corporate_client'] },
+    { label: 'Grupos', href: '/grupos', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Estudiantes', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Usuarios', href: '/usuarios', roles: ['owner', 'manager'] },
+    { label: 'Asistencia', href: '/asistencia', roles: ['teacher', 'manager', 'admin'] },
     { label: 'Mis Grupos', href: '/mis-grupos', roles: ['student'] },
     { label: 'Mi Progreso', href: '/mi-progreso', roles: ['student'] },
-    { label: 'Reportes', href: '/reportes', roles: ['owner', 'manager', 'teacher', 'corporate_client'] },
+    { label: 'Reportes', href: '/reportes', roles: ['owner', 'manager', 'admin', 'teacher', 'corporate_client'] },
   ]
 
   const visibleItems = navItems.filter((item) => hasRole(item.roles))
@@ -33,6 +34,8 @@ export function Navbar() {
         return 'bg-red-100 text-red-800'
       case 'manager':
         return 'bg-blue-100 text-blue-800'
+      case 'admin':
+        return 'bg-indigo-100 text-indigo-800'
       case 'teacher':
         return 'bg-green-100 text-green-800'
       case 'student':

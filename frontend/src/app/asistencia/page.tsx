@@ -122,7 +122,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['teacher', 'manager']}>
+    <ProtectedRoute allowedRoles={['teacher', 'manager', 'admin']}>
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 

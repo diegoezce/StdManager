@@ -14,7 +14,7 @@ from .serializers import (
     GroupSerializer, EnrollmentSerializer, AttendanceSerializer,
     AttendanceBulkSerializer, EvaluationSerializer, CertificateSerializer
 )
-from apps.core.permissions import IsOwnerOrManager, IsTeacher
+from apps.core.permissions import IsOwnerOrManager, IsAdmin, IsTeacher
 
 
 class CorporateClientViewSet(viewsets.ModelViewSet):
@@ -30,7 +30,7 @@ class CorporateClientViewSet(viewsets.ModelViewSet):
 
 class TeacherViewSet(viewsets.ModelViewSet):
     serializer_class = TeacherSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrManager]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
         return Teacher.objects.filter(organization=self.request.user.organization)
@@ -52,7 +52,7 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['owner', 'manager']:
+        if user.role in ['owner', 'manager', 'admin']:
             return Student.objects.filter(organization=user.organization)
         elif user.role == 'student':
             return Student.objects.filter(user=user)
@@ -61,9 +61,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         return Student.objects.none()
 
     def get_permissions(self):
-        """Allow managers/owners to create, update, delete students"""
+        """Allow admins/managers/owners to create, update, delete students"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsOwnerOrManager()]
+            return [IsAuthenticated(), IsAdmin()]
         return super().get_permissions()
 
     def perform_create(self, serializer):
@@ -94,16 +94,16 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['owner', 'manager']:
+        if user.role in ['owner', 'manager', 'admin']:
             return Group.objects.filter(organization=user.organization)
         elif user.role == 'teacher':
             return Group.objects.filter(teacher__user=user)
         return Group.objects.filter(organization=user.organization)
 
     def get_permissions(self):
-        """Allow managers/owners and teachers to update their groups"""
+        """Allow admins/managers/owners to create/destroy, and teachers to update their own groups"""
         if self.action in ['create', 'destroy']:
-            return [IsAuthenticated(), IsOwnerOrManager()]
+            return [IsAuthenticated(), IsAdmin()]
         elif self.action in ['update', 'partial_update']:
             return [IsAuthenticated(), IsTeacher()]
         return super().get_permissions()

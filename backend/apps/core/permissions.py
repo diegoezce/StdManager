@@ -16,9 +16,14 @@ class IsOwnerOrManager(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.role in ['owner', 'manager']
 
 
+class IsAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role in ['admin', 'manager', 'owner']
+
+
 class IsTeacher(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['teacher', 'owner', 'manager']
+        return request.user and request.user.is_authenticated and request.user.role in ['teacher', 'admin', 'manager', 'owner']
 
 
 class IsStudent(permissions.BasePermission):

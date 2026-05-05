@@ -38,7 +38,7 @@ export default function DashboardPage() {
         const org = orgs.results?.[0] || orgs[0]
         setOrganization(org)
 
-        if (org && hasRole(['owner', 'manager'])) {
+        if (org && hasRole(['owner', 'manager', 'admin'])) {
           const stats = await apiClient.getOrganizationStats(org.slug)
           setStats(stats)
         }
@@ -77,8 +77,8 @@ export default function DashboardPage() {
           <p className="text-gray-600">Welcome {user?.first_name || 'back'}!</p>
         </div>
 
-        {/* Owner/Manager Stats */}
-        {stats && hasRole(['owner', 'manager']) && (
+        {/* Owner/Manager/Admin Stats */}
+        {stats && hasRole(['owner', 'manager', 'admin']) && (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="px-4 py-5 sm:p-6">
@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
         {/* Quick Links based on Role */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {hasRole(['owner', 'manager']) && (
+          {hasRole(['owner', 'manager', 'admin']) && (
             <>
               <Link href="/grupos">
                 <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
@@ -124,6 +124,14 @@ export default function DashboardPage() {
                   <div className="px-4 py-5 sm:p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-2">👥 Manage Students</h3>
                     <p className="text-gray-600 text-sm">Enroll and manage students</p>
+                  </div>
+                </div>
+              </Link>
+              <Link href="/asistencia">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                  <div className="px-4 py-5 sm:p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">✓ Mark Attendance</h3>
+                    <p className="text-gray-600 text-sm">Record student attendance quickly</p>
                   </div>
                 </div>
               </Link>
@@ -164,7 +172,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {hasRole(['owner', 'manager', 'teacher', 'corporate_client']) && (
+          {hasRole(['owner', 'manager', 'admin', 'teacher', 'corporate_client']) && (
             <Link href="/reportes">
               <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
                 <div className="px-4 py-5 sm:p-6">

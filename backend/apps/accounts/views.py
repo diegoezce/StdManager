@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer, UserCreateUpdateSerializer
 )
-from apps.core.permissions import IsSuperAdmin, IsOwner
+from apps.core.permissions import IsSuperAdmin, IsOwner, IsOwnerOrManager
 
 User = get_user_model()
 
@@ -37,9 +37,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create']:
-            return [IsSuperAdmin() | IsOwner()]
+            return [IsAuthenticated(), IsOwnerOrManager()]
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return [IsSuperAdmin() | IsOwner()]
+            return [IsAuthenticated(), IsOwnerOrManager()]
         return [IsAuthenticated()]
 
     @action(detail=True, methods=['post'])
@@ -60,6 +60,19 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def me(self, request):
         return Response(UserSerializer(request.user).data)
+
+    @action(detail=True, methods=['post'])
+    def reset_password(self, request, pk=None):
+        user = self.get_object()
+        new_password = User.objects.make_random_password(length=12)
+        user.set_password(new_password)
+        user.save()
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'temporary_password': new_password,
+            'message': 'Password has been reset. Share this temporary password with the user.'
+        })
 
 
 @api_view(['POST'])

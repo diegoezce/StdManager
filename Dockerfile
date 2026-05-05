@@ -34,5 +34,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/auth/users/me/').read()"
 
-# Run Gunicorn
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]
+# Create entrypoint script to run migrations before starting gunicorn
+RUN echo '#!/bin/bash\nset -e\necho "Running migrations..."\npython manage.py migrate --noinput || true\necho "Starting gunicorn..."\nexec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# Run entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]

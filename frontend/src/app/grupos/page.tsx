@@ -184,7 +184,7 @@ export default function GruposPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['owner', 'manager']}>
+    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin']}>
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 
@@ -310,7 +310,9 @@ export default function GruposPage() {
                     disabled={isSaving}
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
                   >
-                    {isSaving ? '⏳ Creating...' : '✓ Create Group'}
+                    {editingId
+                      ? isSaving ? '⏳ Saving...' : '✓ Save Group'
+                      : isSaving ? '⏳ Creating...' : '✓ Create Group'}
                   </button>
                   <button
                     type="button"
@@ -371,7 +373,7 @@ export default function GruposPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => startEditing(group)}
-                        className="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium transition"
+                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
                       >
                         ✎ Edit
                       </button>
