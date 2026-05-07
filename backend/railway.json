@@ -5,7 +5,7 @@
     "context": "."
   },
   "deploy": {
-    "startCommand": "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT",
+    "startCommand": "/bin/sh -c \"gunicorn config.wsgi:application --bind 0.0.0.0:$PORT\"",
     "healthcheckPath": "/api/v1/",
     "healthcheckTimeout": 30,
     "restartPolicyMaxRetries": 5,
