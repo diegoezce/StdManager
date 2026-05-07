@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/railwayapp/cli/main/assets/config.schema.json",
+  "build": {
+    "builder": "dockerfile",
+    "context": "."
+  },
+  "deploy": {
+    "startCommand": "npm start -- -p 8080",
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 30,
+    "restartPolicyMaxRetries": 5,
+    "restartPolicyWindowSeconds": 60
+  }
+}
