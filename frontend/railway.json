@@ -5,7 +5,7 @@
     "context": "."
   },
   "deploy": {
-    "startCommand": "npm start -- -H 0.0.0.0 -p ${PORT:-3000}",
+    "startCommand": "/bin/sh -c \"exec npm start -- -H 0.0.0.0 -p ${PORT:-3000}\"",
     "healthcheckPath": "/",
     "healthcheckTimeout": 30,
     "restartPolicyMaxRetries": 5,
