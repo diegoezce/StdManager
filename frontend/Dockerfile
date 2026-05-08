@@ -16,6 +16,11 @@ COPY public ./public
 # Install dependencies
 RUN npm ci
 
+# NEXT_PUBLIC_* variables are embedded at build time by Next.js.
+# Railway passes environment variables as build args when using Dockerfile builder.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Build
 RUN npm run build
 
