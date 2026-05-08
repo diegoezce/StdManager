@@ -1,8 +1,15 @@
 from .base import *
+import os
 import dj_database_url
 
 DEBUG = False
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
+
+# Build ALLOWED_HOSTS from env var, then automatically add the Railway public domain.
+_allowed = config('ALLOWED_HOSTS', default='').split(',')
+_railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
+if _railway_domain and _railway_domain not in _allowed:
+    _allowed.append(_railway_domain)
+ALLOWED_HOSTS = [h for h in _allowed if h]  # remove empty strings
 
 # Use DATABASE_URL provided by Railway PostgreSQL plugin
 database_url = config('DATABASE_URL', default=None)
@@ -23,8 +30,15 @@ else:
         }
     }
 
-# Allow frontend origin from env var (Railway)
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',') if config('CORS_ALLOWED_ORIGINS', default='') else []
+# CORS: use explicit origins list when set, otherwise allow all origins.
+# Set CORS_ALLOWED_ORIGINS=https://your-frontend.railway.app in Railway env vars
+# to lock this down once the frontend URL is known.
+_cors_origins = config('CORS_ALLOWED_ORIGINS', default='').strip()
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 # Railway terminates SSL at the proxy and forwards HTTP to the container.
 # SECURE_PROXY_SSL_HEADER lets Django trust the X-Forwarded-Proto header
