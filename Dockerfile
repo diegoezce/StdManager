@@ -34,8 +34,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD python -c "import socket; socket.create_connection(('localhost', 8000), timeout=5).close()"
 
-# Create entrypoint script to run migrations before starting gunicorn
-RUN echo '#!/bin/bash\nset -e\necho "[$(date)] Starting entrypoint script..."\necho "[$(date)] Running migrations..."\npython manage.py migrate --noinput 2>&1 || echo "[$(date)] Migration failed (non-fatal)"\necho "[$(date)] Migrations complete. Starting gunicorn on 0.0.0.0:8000..."\nexec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+# Create entrypoint script - migrations run manually via railway run
+RUN echo '#!/bin/bash\nexec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 # Run entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]
