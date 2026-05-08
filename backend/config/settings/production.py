@@ -8,7 +8,13 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
 database_url = config('DATABASE_URL', default=None)
 if database_url:
     DATABASES = {
-        'default': dj_database_url.config(default=database_url, conn_max_age=600)
+        'default': dj_database_url.config(
+            default=database_url,
+            conn_max_age=600,
+            OPTIONS={
+                'connect_timeout': 30,
+            }
+        )
     }
 else:
     # Fallback to individual variables if DATABASE_URL not provided
