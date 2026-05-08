@@ -26,13 +26,14 @@ else:
 # Allow frontend origin from env var (Railway)
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',') if config('CORS_ALLOWED_ORIGINS', default='') else []
 
+# Railway terminates SSL at the proxy and forwards HTTP to the container.
+# SECURE_PROXY_SSL_HEADER lets Django trust the X-Forwarded-Proto header
+# so SECURE_SSL_REDIRECT works correctly without causing an infinite loop.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_SECURITY_POLICY = {
-    'default-src': ("'self'",),
-}
 
 LOGGING = {
     'version': 1,
