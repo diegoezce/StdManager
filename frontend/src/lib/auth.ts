@@ -8,6 +8,10 @@ interface User {
   last_name: string
   role: 'super_admin' | 'owner' | 'manager' | 'admin' | 'teacher' | 'corporate_client' | 'student'
   organization_id: string
+  organization_name: string
+  organization_slug: string
+  brand_name: string
+  is_active: boolean
 }
 
 interface AuthStore {

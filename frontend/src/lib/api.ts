@@ -217,6 +217,11 @@ class APIClient {
     await this.axiosInstance.delete(`/auth/users/${id}/`)
   }
 
+  async updateOrganization(slug: string, data: { name?: string; brand_name?: string }) {
+    const response = await this.axiosInstance.patch(`/organizations/${slug}/`, data)
+    return response.data
+  }
+
   async resetUserPassword(id: string, password?: string) {
     const response = await this.axiosInstance.post(
       `/auth/users/${id}/reset_password/`,

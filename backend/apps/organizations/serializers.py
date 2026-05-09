@@ -17,7 +17,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        fields = ('id', 'name', 'slug', 'license_number', 'status', 'max_users', 'is_active', 'license', 'user_count', 'created_at')
+        fields = ('id', 'name', 'brand_name', 'slug', 'license_number', 'status', 'max_users', 'is_active', 'license', 'user_count', 'created_at')
         read_only_fields = ('id', 'slug', 'created_at')
 
     def get_user_count(self, obj):
@@ -27,4 +27,4 @@ class OrganizationSerializer(serializers.ModelSerializer):
 class OrganizationCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ('name', 'license_number', 'status', 'max_users', 'is_active')
+        fields = ('name', 'brand_name', 'license_number', 'status', 'max_users', 'is_active')

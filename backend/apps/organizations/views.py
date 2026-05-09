@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Organization, License
 from .serializers import OrganizationSerializer, OrganizationCreateUpdateSerializer, LicenseSerializer
-from apps.core.permissions import IsSuperAdmin, IsOwner
+from apps.core.permissions import IsSuperAdmin, IsOwner, IsAdmin
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
@@ -30,7 +30,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create']:
             return [IsSuperAdmin()]
-        elif self.action in ['update', 'partial_update', 'destroy']:
+        elif self.action in ['update', 'partial_update']:
+            return [IsAdmin()]
+        elif self.action in ['destroy']:
             return [IsSuperAdmin() | IsOwner()]
         return [IsAuthenticated()]
 

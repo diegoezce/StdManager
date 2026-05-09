@@ -140,7 +140,7 @@ export default function UsuariosPage() {
   }
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm('¿Seguro que querés eliminar este usuario?')) return
+    if (!confirm('Are you sure you want to delete this user?')) return
     try {
       await apiClient.deleteUser(id)
       const response = await apiClient.getUsers()
@@ -165,6 +165,7 @@ export default function UsuariosPage() {
       await apiClient.resetUserPassword(changingPasswordFor.id, newPassword)
       setChangingPasswordFor(null)
       setNewPassword('')
+      toast.success('Password updated')
     } catch (error: any) {
       console.error('Failed to change password:', error)
       toast.error(extractErrorMessage(error))
@@ -195,15 +196,15 @@ export default function UsuariosPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-              <p className="text-gray-600">Crear y gestionar cuentas de usuario</p>
+              <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+              <p className="text-gray-600">Create and manage user accounts</p>
             </div>
             {!editingId && (
               <button
                 onClick={openCreateForm}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
               >
-                + Nuevo usuario
+                + New user
               </button>
             )}
           </div>
@@ -212,12 +213,12 @@ export default function UsuariosPage() {
           {(showForm || editingId) && (
             <div className="bg-white rounded-lg shadow mb-8 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
-                {editingId ? 'Editar usuario' : 'Nuevo usuario'}
+                {editingId ? 'Edit user' : 'New user'}
               </h2>
               <form onSubmit={editingId ? handleEditUser : handleCreateUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
                     <input
                       type="text"
                       required
@@ -227,7 +228,7 @@ export default function UsuariosPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
                     <input
                       type="text"
                       required
@@ -248,7 +249,7 @@ export default function UsuariosPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                     <select
                       required
                       value={formData.role}
@@ -267,7 +268,7 @@ export default function UsuariosPage() {
                   {!editingId && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Contraseña inicial
+                        Initial password
                       </label>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
@@ -284,14 +285,14 @@ export default function UsuariosPage() {
                           onClick={() => setShowPassword(!showPassword)}
                           className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
                         >
-                          {showPassword ? 'Ocultar' : 'Ver'}
+                          {showPassword ? 'Hide' : 'Show'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, password: generatePassword() })}
                           className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
                         >
-                          Generar
+                          Generate
                         </button>
                         <button
                           type="button"
@@ -300,7 +301,7 @@ export default function UsuariosPage() {
                             copied ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
-                          {copied ? '✓ Copiado' : 'Copiar'}
+                          {copied ? '✓ Copied' : 'Copy'}
                         </button>
                       </div>
                     </div>
@@ -314,15 +315,15 @@ export default function UsuariosPage() {
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
                   >
                     {editingId
-                      ? isSaving ? 'Guardando...' : 'Guardar cambios'
-                      : isSaving ? 'Creando...' : 'Crear usuario'}
+                      ? isSaving ? 'Saving...' : 'Save changes'
+                      : isSaving ? 'Creating...' : 'Create user'}
                   </button>
                   <button
                     type="button"
                     onClick={cancelForm}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 </div>
               </form>
@@ -344,19 +345,19 @@ export default function UsuariosPage() {
                           <span className="font-medium">Email:</span> {u.email}
                         </p>
                         <p>
-                          <span className="font-medium">Rol:</span>{' '}
+                          <span className="font-medium">Role:</span>{' '}
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {u.role}
                           </span>
                         </p>
                         <p>
-                          <span className="font-medium">Estado:</span>{' '}
+                          <span className="font-medium">Status:</span>{' '}
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {u.is_active ? 'Activo' : 'Inactivo'}
+                            {u.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </p>
                       </div>
@@ -367,19 +368,19 @@ export default function UsuariosPage() {
                           onClick={() => startEditing(u)}
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
                         >
-                          Editar
+                          Edit
                         </button>
                         <button
                           onClick={() => openChangePassword(u)}
                           className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-sm font-medium transition"
                         >
-                          Contraseña
+                          Password
                         </button>
                         <button
                           onClick={() => handleDeleteUser(u.id)}
                           className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
                         >
-                          Eliminar
+                          Delete
                         </button>
                       </div>
                     )}
@@ -389,8 +390,8 @@ export default function UsuariosPage() {
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-              <p className="text-lg mb-2">No hay usuarios</p>
-              <p className="text-sm">Creá el primero con el botón de arriba</p>
+              <p className="text-lg mb-2">No users yet</p>
+              <p className="text-sm">Create the first one with the button above</p>
             </div>
           )}
         </div>
@@ -400,14 +401,14 @@ export default function UsuariosPage() {
       {changingPasswordFor && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Cambiar contraseña</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Change password</h3>
             <p className="text-sm text-gray-500 mb-6">
               {changingPasswordFor.first_name} {changingPasswordFor.last_name} &mdash;{' '}
               {changingPasswordFor.email}
             </p>
 
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nueva contraseña
+              New password
             </label>
             <div className="flex gap-2 mb-2">
               <div className="relative flex-1">
@@ -423,7 +424,7 @@ export default function UsuariosPage() {
                 onClick={() => setShowNewPassword(!showNewPassword)}
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
               >
-                {showNewPassword ? 'Ocultar' : 'Ver'}
+                {showNewPassword ? 'Hide' : 'Show'}
               </button>
             </div>
             <div className="flex gap-2 mb-6">
@@ -432,7 +433,7 @@ export default function UsuariosPage() {
                 onClick={() => { setNewPassword(generatePassword()); setCopiedNew(false) }}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
               >
-                Generar nueva
+                Generate new
               </button>
               <button
                 type="button"
@@ -441,7 +442,7 @@ export default function UsuariosPage() {
                   copiedNew ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {copiedNew ? '✓ Copiada' : 'Copiar'}
+                {copiedNew ? '✓ Copied' : 'Copy'}
               </button>
             </div>
 
@@ -451,13 +452,13 @@ export default function UsuariosPage() {
                 disabled={isSavingPassword || !newPassword}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
               >
-                {isSavingPassword ? 'Guardando...' : 'Guardar contraseña'}
+                {isSavingPassword ? 'Saving...' : 'Save password'}
               </button>
               <button
                 onClick={() => setChangingPasswordFor(null)}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
               >
-                Cancelar
+                Cancel
               </button>
             </div>
           </div>

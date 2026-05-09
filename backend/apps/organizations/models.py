@@ -13,6 +13,7 @@ class Organization(BaseModel):
     )
 
     name = models.CharField(max_length=255, unique=True)
+    brand_name = models.CharField(max_length=100, blank=True, default='')
     slug = models.SlugField(unique=True, max_length=255)
     license_number = models.CharField(max_length=100, unique=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trial')

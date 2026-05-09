@@ -254,7 +254,7 @@ export default function EstudiantesPage() {
                   {!editingId && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nivel de inglés
+                        English level
                       </label>
                       <select
                         value={formData.english_level}
@@ -274,7 +274,7 @@ export default function EstudiantesPage() {
                   )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Empresa
+                      Company
                     </label>
                     <select
                       value={formData.corporate_client || ''}
@@ -283,7 +283,7 @@ export default function EstudiantesPage() {
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">Sin empresa</option>
+                      <option value="">No company</option>
                       {corporateClients.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.company_name}
@@ -333,12 +333,12 @@ export default function EstudiantesPage() {
                         </p>
                         {student.corporate_client_name && (
                           <p>
-                            <span className="font-medium">Empresa:</span>{' '}
+                            <span className="font-medium">Company:</span>{' '}
                             {student.corporate_client_name}
                           </p>
                         )}
                         <p>
-                          <span className="font-medium">Nivel:</span>{' '}
+                          <span className="font-medium">Level:</span>{' '}
                           {student.english_level}
                         </p>
                         <p>

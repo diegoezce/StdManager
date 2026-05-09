@@ -91,10 +91,10 @@ export default function EmpresasPage() {
     try {
       if (editingId) {
         await apiClient.updateCorporateClient(editingId, formData)
-        toast.success('Empresa actualizada')
+        toast.success('Company updated')
       } else {
         await apiClient.createCorporateClient(formData)
-        toast.success('Empresa creada')
+        toast.success('Company created')
       }
       await loadClients()
       cancelForm()
@@ -106,10 +106,10 @@ export default function EmpresasPage() {
   }
 
   const handleDelete = async (c: CorporateClient) => {
-    if (!confirm(`¿Eliminar "${c.company_name}"? Se desvinculará de sus alumnos.`)) return
+    if (!confirm(`Delete "${c.company_name}"? This will unlink it from its students.`)) return
     try {
       await apiClient.deleteCorporateClient(c.id)
-      toast.success('Empresa eliminada')
+      toast.success('Company deleted')
       await loadClients()
     } catch (error: any) {
       toast.error(extractErrorMessage(error))
@@ -132,14 +132,14 @@ export default function EmpresasPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Empresas</h1>
-              <p className="text-gray-600">Clientes corporativos y sus datos de contacto</p>
+              <h1 className="text-2xl font-bold text-gray-900">Companies</h1>
+              <p className="text-gray-600">Corporate clients and their contact details</p>
             </div>
             <button
               onClick={openCreate}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
             >
-              + Nueva empresa
+              + New company
             </button>
           </div>
 
@@ -147,13 +147,13 @@ export default function EmpresasPage() {
           {showForm && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-5">
-                {editingId ? 'Editar empresa' : 'Nueva empresa'}
+                {editingId ? 'Edit company' : 'New company'}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre de la empresa <span className="text-red-500">*</span>
+                      Company name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -161,12 +161,12 @@ export default function EmpresasPage() {
                       value={formData.company_name}
                       onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="ej. Finlays S.A."
+                      placeholder="e.g. Acme Corp"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre de contacto <span className="text-red-500">*</span>
+                      Contact name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -178,7 +178,7 @@ export default function EmpresasPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email de contacto <span className="text-red-500">*</span>
+                      Contact email <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="email"
@@ -190,7 +190,7 @@ export default function EmpresasPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Teléfono
+                      Phone
                     </label>
                     <input
                       type="text"
@@ -201,7 +201,7 @@ export default function EmpresasPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dirección
+                      Address
                     </label>
                     <input
                       type="text"
@@ -220,7 +220,7 @@ export default function EmpresasPage() {
                         className="rounded"
                       />
                       <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Empresa activa
+                        Active company
                       </label>
                     </div>
                   )}
@@ -231,14 +231,14 @@ export default function EmpresasPage() {
                     disabled={isSaving}
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
                   >
-                    {isSaving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear empresa'}
+                    {isSaving ? 'Saving...' : editingId ? 'Save changes' : 'Create company'}
                   </button>
                   <button
                     type="button"
                     onClick={cancelForm}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 </div>
               </form>
@@ -248,8 +248,8 @@ export default function EmpresasPage() {
           {/* List */}
           {clients.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-500">
-              <p className="text-lg font-medium mb-1">No hay empresas</p>
-              <p className="text-sm">Creá la primera con el botón de arriba</p>
+              <p className="text-lg font-medium mb-1">No companies yet</p>
+              <p className="text-sm">Create the first one with the button above</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
@@ -266,17 +266,17 @@ export default function EmpresasPage() {
                           c.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                         }`}
                       >
-                        {c.is_active ? 'Activa' : 'Inactiva'}
+                        {c.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-0.5">
-                      <p><span className="font-medium">Contacto:</span> {c.contact_name}</p>
+                      <p><span className="font-medium">Contact:</span> {c.contact_name}</p>
                       <p><span className="font-medium">Email:</span> {c.contact_email}</p>
                       {c.contact_phone && (
-                        <p><span className="font-medium">Tel:</span> {c.contact_phone}</p>
+                        <p><span className="font-medium">Phone:</span> {c.contact_phone}</p>
                       )}
                       {c.address && (
-                        <p><span className="font-medium">Dir:</span> {c.address}</p>
+                        <p><span className="font-medium">Address:</span> {c.address}</p>
                       )}
                     </div>
                   </div>
@@ -285,13 +285,13 @@ export default function EmpresasPage() {
                       onClick={() => startEditing(c)}
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
                     >
-                      Editar
+                      Edit
                     </button>
                     <button
                       onClick={() => handleDelete(c)}
                       className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
                     >
-                      Eliminar
+                      Delete
                     </button>
                   </div>
                 </div>

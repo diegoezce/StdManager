@@ -17,14 +17,15 @@ export function Navbar() {
 
   const navItems: { label: string; href: string; roles: string[] }[] = [
     { label: 'Dashboard', href: '/dashboard', roles: ['owner', 'manager', 'admin', 'teacher', 'student', 'corporate_client'] },
-    { label: 'Grupos', href: '/grupos', roles: ['owner', 'manager', 'admin'] },
-    { label: 'Estudiantes', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },
-    { label: 'Empresas', href: '/empresas', roles: ['owner', 'manager', 'admin'] },
-    { label: 'Usuarios', href: '/usuarios', roles: ['owner', 'manager'] },
-    { label: 'Asistencia', href: '/asistencia', roles: ['teacher', 'manager', 'admin'] },
-    { label: 'Mis Grupos', href: '/mis-grupos', roles: ['student'] },
-    { label: 'Mi Progreso', href: '/mi-progreso', roles: ['student'] },
-    { label: 'Reportes', href: '/reportes', roles: ['owner', 'manager', 'admin', 'teacher', 'corporate_client'] },
+    { label: 'Groups', href: '/grupos', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Students', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Companies', href: '/empresas', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Users', href: '/usuarios', roles: ['owner', 'manager'] },
+    { label: 'Attendance', href: '/asistencia', roles: ['teacher', 'manager', 'admin'] },
+    { label: 'My Groups', href: '/mis-grupos', roles: ['student'] },
+    { label: 'My Progress', href: '/mi-progreso', roles: ['student'] },
+    { label: 'Reports', href: '/reportes', roles: ['owner', 'manager', 'admin', 'teacher', 'corporate_client'] },
+    { label: 'Settings', href: '/configuracion', roles: ['owner', 'admin'] },
   ]
 
   const visibleItems = navItems.filter((item) => hasRole(item.roles))
@@ -54,7 +55,7 @@ export function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-              GoPlanify
+              {user.brand_name || user.organization_name || 'GoPlanify'}
             </Link>
             <div className="hidden md:flex space-x-1 ml-10">
               {visibleItems.map((item) => (

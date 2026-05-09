@@ -132,7 +132,7 @@ export default function ReportesPage() {
       <span className="ml-1 text-gray-300">↕</span>
     )
 
-  const today = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const today = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })
 
   if (isLoading) {
     return (
@@ -152,21 +152,21 @@ export default function ReportesPage() {
           {/* Header */}
           <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 print:mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Reporte de alumnos</h1>
-              <p className="text-sm text-gray-500 mt-1">Generado el {today}</p>
+              <h1 className="text-2xl font-bold text-gray-900">Student Report</h1>
+              <p className="text-sm text-gray-500 mt-1">Generated on {today}</p>
             </div>
             <button
               onClick={() => window.print()}
               className="self-start sm:self-auto px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition print:hidden"
             >
-              Imprimir / Exportar PDF
+              Print / Export PDF
             </button>
           </div>
 
           {/* Filters */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4 print:hidden">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-600">Empresa:</span>
+              <span className="text-sm font-medium text-gray-600">Company:</span>
               <div className="flex gap-1 flex-wrap">
                 <button
                   onClick={() => setSelectedCompany('all')}
@@ -176,7 +176,7 @@ export default function ReportesPage() {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  Todas
+                  All
                 </button>
                 {companies.map((c) => (
                   <button
@@ -200,28 +200,28 @@ export default function ReportesPage() {
                 onChange={(e) => setShowInactive(e.target.checked)}
                 className="rounded"
               />
-              Mostrar inactivos
+              Show inactive
             </label>
           </div>
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <p className="text-sm text-gray-500 mb-1">Alumnos activos</p>
+              <p className="text-sm text-gray-500 mb-1">Active students</p>
               <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <p className="text-sm text-gray-500 mb-1">Empresas</p>
+              <p className="text-sm text-gray-500 mb-1">Companies</p>
               <p className="text-3xl font-bold text-gray-900">{stats.companies}</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <p className="text-sm text-gray-500 mb-1">Asistencia promedio</p>
+              <p className="text-sm text-gray-500 mb-1">Avg. attendance</p>
               <p className="text-3xl font-bold text-gray-900">
                 {stats.avgRate !== null ? `${stats.avgRate}%` : '—'}
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-              <p className="text-sm text-gray-500 mb-1">Con grupo activo</p>
+              <p className="text-sm text-gray-500 mb-1">In active group</p>
               <p className="text-3xl font-bold text-gray-900">{stats.withGroup}</p>
             </div>
           </div>
@@ -241,31 +241,31 @@ export default function ReportesPage() {
                       onClick={() => toggleSort('full_name')}
                       className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
                     >
-                      Alumno <SortIcon k="full_name" />
+                      Student <SortIcon k="full_name" />
                     </th>
                     <th
                       onClick={() => toggleSort('company')}
                       className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
                     >
-                      Empresa <SortIcon k="company" />
+                      Company <SortIcon k="company" />
                     </th>
                     <th
                       onClick={() => toggleSort('english_level')}
                       className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
                     >
-                      Nivel <SortIcon k="english_level" />
+                      Level <SortIcon k="english_level" />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Grupo actual
+                      Current group
                     </th>
                     <th
                       onClick={() => toggleSort('attendance_rate')}
                       className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
                     >
-                      Asistencia <SortIcon k="attendance_rate" />
+                      Attendance <SortIcon k="attendance_rate" />
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Estado
+                      Status
                     </th>
                   </tr>
                 </thead>
@@ -273,7 +273,7 @@ export default function ReportesPage() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-10 text-center text-gray-400 text-sm">
-                        No hay alumnos para mostrar
+                        No students to display
                       </td>
                     </tr>
                   ) : (
@@ -305,7 +305,7 @@ export default function ReportesPage() {
                         <td className="px-6 py-4">
                           <AttendanceBar rate={s.attendance_rate} />
                           {s.total_sessions > 0 && (
-                            <p className="text-xs text-gray-400 mt-0.5">{s.total_sessions} clases</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{s.total_sessions} classes</p>
                           )}
                         </td>
                         <td className="px-6 py-4">
@@ -319,7 +319,7 @@ export default function ReportesPage() {
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${s.is_active ? 'bg-green-500' : 'bg-gray-400'}`}
                             />
-                            {s.is_active ? 'Activo' : 'Inactivo'}
+                            {s.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                       </tr>
@@ -329,8 +329,8 @@ export default function ReportesPage() {
               </table>
             </div>
             <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
-              {filtered.length} alumno{filtered.length !== 1 ? 's' : ''}
-              {selectedCompany !== 'all' ? ` de ${selectedCompany}` : ' en total'}
+              {filtered.length} student{filtered.length !== 1 ? 's' : ''}
+              {selectedCompany !== 'all' ? ` from ${selectedCompany}` : ' total'}
             </div>
           </div>
         </div>

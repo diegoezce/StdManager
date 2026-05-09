@@ -14,11 +14,23 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     organization_id = serializers.StringRelatedField(source='organization.id', read_only=True)
+    organization_name = serializers.SerializerMethodField()
+    organization_slug = serializers.SerializerMethodField()
+    brand_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'organization_id', 'is_active', 'created_at')
+        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'organization_id', 'organization_name', 'organization_slug', 'brand_name', 'is_active', 'created_at')
         read_only_fields = ('id', 'created_at')
+
+    def get_organization_name(self, obj):
+        return obj.organization.name if obj.organization else ''
+
+    def get_organization_slug(self, obj):
+        return obj.organization.slug if obj.organization else ''
+
+    def get_brand_name(self, obj):
+        return obj.organization.brand_name if obj.organization else ''
 
 
 class UserCreateUpdateSerializer(serializers.ModelSerializer):
