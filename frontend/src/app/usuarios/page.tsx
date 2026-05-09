@@ -334,7 +334,12 @@ export default function UsuariosPage() {
           {users.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {users.map((u) => (
-                <div key={u.id} className="bg-white rounded-lg shadow p-6">
+                <div
+                  key={u.id}
+                  className={`bg-white rounded-lg shadow p-6 transition ${
+                    editingId === u.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-gray-900">
@@ -362,28 +367,37 @@ export default function UsuariosPage() {
                         </p>
                       </div>
                     </div>
-                    {editingId !== u.id && (
-                      <div className="flex gap-2 flex-wrap justify-end">
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      {editingId === u.id ? (
                         <button
-                          onClick={() => startEditing(u)}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                          onClick={cancelForm}
+                          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-sm font-medium transition"
                         >
-                          Edit
+                          ✕ Cancel editing
                         </button>
-                        <button
-                          onClick={() => openChangePassword(u)}
-                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-sm font-medium transition"
-                        >
-                          Password
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(u.id)}
-                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditing(u)}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => openChangePassword(u)}
+                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-sm font-medium transition"
+                          >
+                            Password
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
