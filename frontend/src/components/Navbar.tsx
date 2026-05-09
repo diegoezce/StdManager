@@ -19,6 +19,7 @@ export function Navbar() {
     { label: 'Dashboard', href: '/dashboard', roles: ['owner', 'manager', 'admin', 'teacher', 'student', 'corporate_client'] },
     { label: 'Grupos', href: '/grupos', roles: ['owner', 'manager', 'admin'] },
     { label: 'Estudiantes', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Empresas', href: '/empresas', roles: ['owner', 'manager', 'admin'] },
     { label: 'Usuarios', href: '/usuarios', roles: ['owner', 'manager'] },
     { label: 'Asistencia', href: '/asistencia', roles: ['teacher', 'manager', 'admin'] },
     { label: 'Mis Grupos', href: '/mis-grupos', roles: ['student'] },

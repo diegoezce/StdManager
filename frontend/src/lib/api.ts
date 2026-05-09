@@ -154,6 +154,20 @@ class APIClient {
     return response.data
   }
 
+  async createCorporateClient(data: any) {
+    const response = await this.axiosInstance.post('/corporate-clients/', data)
+    return response.data
+  }
+
+  async updateCorporateClient(id: string, data: any) {
+    const response = await this.axiosInstance.put(`/corporate-clients/${id}/`, data)
+    return response.data
+  }
+
+  async deleteCorporateClient(id: string) {
+    await this.axiosInstance.delete(`/corporate-clients/${id}/`)
+  }
+
   async getCertificates() {
     const response = await this.axiosInstance.get('/certificates/')
     return response.data
