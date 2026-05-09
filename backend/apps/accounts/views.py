@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from .serializers import (
     CustomTokenObtainPairSerializer, UserSerializer, UserCreateUpdateSerializer
 )
-from apps.core.permissions import IsSuperAdmin, IsOwner, IsOwnerOrManager
+from apps.core.permissions import IsSuperAdmin, IsOwner, IsOwnerOrManager, IsAdmin
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -38,10 +38,8 @@ class UserViewSet(viewsets.ModelViewSet):
         return User.objects.none()
 
     def get_permissions(self):
-        if self.action in ['create']:
-            return [IsAuthenticated(), IsOwnerOrManager()]
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsOwnerOrManager()]
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsAdmin()]
         return [IsAuthenticated()]
 
     @action(detail=True, methods=['post'])
