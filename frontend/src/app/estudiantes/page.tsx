@@ -96,6 +96,7 @@ export default function EstudiantesPage() {
         first_name: '',
         last_name: '',
         english_level: 'beginner',
+        corporate_client: null,
       })
     } catch (error: any) {
       console.error('Failed to create student:', error)
@@ -126,6 +127,7 @@ export default function EstudiantesPage() {
         first_name: '',
         last_name: '',
         english_level: 'beginner',
+        corporate_client: null,
       })
     } catch (error: any) {
       console.error('Failed to update student:', error)
