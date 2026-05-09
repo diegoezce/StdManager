@@ -111,11 +111,21 @@ def register(request):
         user_obj = serializer.save(organization=requester.organization)
 
         if data.get('role') == 'student':
-            from apps.blast.models import Student
+            from apps.blast.models import Student, CorporateClient
+            corporate_client = None
+            if data.get('corporate_client'):
+                try:
+                    corporate_client = CorporateClient.objects.get(
+                        id=data['corporate_client'],
+                        organization=requester.organization,
+                    )
+                except CorporateClient.DoesNotExist:
+                    logger.warning('CorporateClient %s not found for org %s', data['corporate_client'], requester.organization)
             Student.objects.create(
                 user=user_obj,
                 organization=requester.organization,
                 english_level=data.get('english_level', 'beginner'),
+                corporate_client=corporate_client,
             )
 
         logger.info('User created: %s (role=%s) by %s', user_obj.email, user_obj.role, requester.email)

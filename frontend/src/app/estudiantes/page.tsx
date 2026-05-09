@@ -14,6 +14,7 @@ export default function EstudiantesPage() {
   const { user, me } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
   const [groups, setGroups] = useState<Group[]>([])
+  const [corporateClients, setCorporateClients] = useState<{ id: string; company_name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -23,11 +24,13 @@ export default function EstudiantesPage() {
     first_name: string
     last_name: string
     english_level: Student['english_level']
+    corporate_client: string | null
   }>({
     email: '',
     first_name: '',
     last_name: '',
     english_level: 'beginner',
+    corporate_client: null,
   })
   const [isSaving, setIsSaving] = useState(false)
   const toast = useToast()
@@ -51,16 +54,15 @@ export default function EstudiantesPage() {
       try {
         if (!user) return
 
-        const [studentsResponse, groupsResponse] = await Promise.all([
+        const [studentsResponse, groupsResponse, clientsResponse] = await Promise.all([
           apiClient.getStudents(),
           apiClient.getGroups(),
+          apiClient.getCorporateClients(),
         ])
 
-        const studentsData = studentsResponse.results || studentsResponse
-        const groupsData = groupsResponse.results || groupsResponse
-
-        setStudents(studentsData)
-        setGroups(groupsData)
+        setStudents(studentsResponse.results || studentsResponse)
+        setGroups(groupsResponse.results || groupsResponse)
+        setCorporateClients(clientsResponse.results || clientsResponse)
       } catch (error: any) {
         console.error('Failed to load data:', error)
       } finally {
@@ -113,6 +115,7 @@ export default function EstudiantesPage() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
+        corporate_client: formData.corporate_client || null,
       })
 
       const response = await apiClient.getStudents()
@@ -139,6 +142,7 @@ export default function EstudiantesPage() {
       first_name: student.first_name || '',
       last_name: student.last_name || '',
       english_level: student.english_level || 'beginner',
+      corporate_client: student.corporate_client || null,
     })
   }
 
@@ -149,6 +153,7 @@ export default function EstudiantesPage() {
       first_name: '',
       last_name: '',
       english_level: 'beginner',
+      corporate_client: null,
     })
   }
 
@@ -247,27 +252,43 @@ export default function EstudiantesPage() {
                   {!editingId && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        English Level
+                        Nivel de inglés
                       </label>
                       <select
                         value={formData.english_level}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            english_level: e.target.value as any,
-                          })
+                          setFormData({ ...formData, english_level: e.target.value as any })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="beginner">Beginner</option>
-                        <option value="elementary">Elementary</option>
-                        <option value="pre-intermediate">Pre-Intermediate</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="upper-intermediate">Upper Intermediate</option>
-                        <option value="advanced">Advanced</option>
+                        <option value="beginner">A1 – Beginner</option>
+                        <option value="elementary">A2 – Elementary</option>
+                        <option value="pre-intermediate">B1 – Pre-Intermediate</option>
+                        <option value="intermediate">B1+ – Intermediate</option>
+                        <option value="upper-intermediate">B2 – Upper Intermediate</option>
+                        <option value="advanced">C1 – Advanced</option>
                       </select>
                     </div>
                   )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Empresa
+                    </label>
+                    <select
+                      value={formData.corporate_client || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, corporate_client: e.target.value || null })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sin empresa</option>
+                      {corporateClients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.company_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-4">
                   <button
@@ -308,8 +329,14 @@ export default function EstudiantesPage() {
                         <p>
                           <span className="font-medium">Email:</span> {student.user_email}
                         </p>
+                        {student.corporate_client_name && (
+                          <p>
+                            <span className="font-medium">Empresa:</span>{' '}
+                            {student.corporate_client_name}
+                          </p>
+                        )}
                         <p>
-                          <span className="font-medium">Level:</span>{' '}
+                          <span className="font-medium">Nivel:</span>{' '}
                           {student.english_level}
                         </p>
                         <p>
