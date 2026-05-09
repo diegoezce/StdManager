@@ -110,6 +110,16 @@ def register(request):
         # Pass organization directly so the read_only field in serializer doesn't drop it
         user_obj = serializer.save(organization=requester.organization)
 
+        if data.get('role') == 'teacher':
+            from apps.blast.models import Teacher
+            Teacher.objects.get_or_create(
+                user=user_obj,
+                defaults={
+                    'organization': requester.organization,
+                    'specializations': [],
+                },
+            )
+
         if data.get('role') == 'student':
             from apps.blast.models import Student, CorporateClient
             corporate_client = None
