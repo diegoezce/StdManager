@@ -1,9 +1,12 @@
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Count, F, Avg
+from django.db.models import Q, Count, F, Avg, Prefetch
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from .models import (
     CorporateClient, Teacher, Student, Group, Enrollment,
@@ -117,21 +120,24 @@ class GroupViewSet(viewsets.ModelViewSet):
         student_id = request.data.get('student_id')
 
         if group.available_spots <= 0:
-            return Response(
-                {'error': 'No available spots'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            logger.warning('Enroll rejected: group %s is full', group.id)
+            return Response({'error': 'No hay lugares disponibles'}, status=status.HTTP_400_BAD_REQUEST)
 
-        enrollment, created = Enrollment.objects.get_or_create(
-            group=group,
-            student_id=student_id,
-            organization=self.request.user.organization,
-            defaults={'status': 'active'}
-        )
+        try:
+            enrollment, created = Enrollment.objects.get_or_create(
+                group=group,
+                student_id=student_id,
+                organization=self.request.user.organization,
+                defaults={'status': 'active'},
+            )
+            logger.info('Enrollment %s: student %s → group %s', 'created' if created else 'existing', student_id, group.id)
+        except Exception as e:
+            logger.error('Enroll failed student %s → group %s: %s', student_id, group.id, e, exc_info=True)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
             EnrollmentSerializer(enrollment).data,
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
     @action(detail=True, methods=['delete'])
@@ -308,17 +314,51 @@ def attendance_report(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def students_report(request):
-    """Get students report"""
+    """Get enriched students report with attendance rate and current groups."""
     organization = request.user.organization
+    company_id = request.query_params.get('company_id')
 
-    students = Student.objects.filter(
+    active_enrollments_qs = Enrollment.objects.filter(
+        status='active'
+    ).select_related('group')
+
+    qs = Student.objects.filter(
         organization=organization
-    ).select_related('user').values(
-        'id', 'user__first_name', 'user__last_name', 'user__email',
-        'english_level', 'is_active'
-    ).order_by('user__first_name')
+    ).select_related(
+        'user', 'corporate_client'
+    ).prefetch_related(
+        Prefetch('enrollments', queryset=active_enrollments_qs, to_attr='active_enrollments'),
+    ).annotate(
+        total_att=Count('attendances'),
+        present_att=Count('attendances', filter=Q(attendances__status='present')),
+    ).order_by('user__last_name', 'user__first_name')
 
-    return Response(list(students))
+    if company_id:
+        qs = qs.filter(corporate_client_id=company_id)
+
+    # Corporate clients only see their own students
+    if request.user.role == 'corporate_client':
+        qs = qs.filter(corporate_client__contact_email=request.user.email)
+
+    result = []
+    for student in qs:
+        total = student.total_att
+        present = student.present_att
+        attendance_rate = round(present / total * 100, 1) if total > 0 else None
+        result.append({
+            'id': str(student.id),
+            'full_name': f"{student.user.first_name} {student.user.last_name}",
+            'email': student.user.email,
+            'company': student.corporate_client.company_name if student.corporate_client else None,
+            'company_id': str(student.corporate_client.id) if student.corporate_client else None,
+            'english_level': student.english_level,
+            'is_active': student.is_active,
+            'attendance_rate': attendance_rate,
+            'total_sessions': total,
+            'current_groups': [e.group.name for e in student.active_enrollments],
+        })
+
+    return Response(result)
 
 
 @api_view(['GET'])

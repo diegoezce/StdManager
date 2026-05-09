@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api'
 import { Student, Group } from '@/types'
 import { Navbar } from '@/components/Navbar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
 export default function EstudiantesPage() {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function EstudiantesPage() {
     english_level: 'beginner',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -36,7 +38,7 @@ export default function EstudiantesPage() {
         if (!user) {
           await me()
         }
-      } catch (error) {
+      } catch (error: any) {
         router.push('/login')
       }
     }
@@ -59,7 +61,7 @@ export default function EstudiantesPage() {
 
         setStudents(studentsData)
         setGroups(groupsData)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load data:', error)
       } finally {
         setIsLoading(false)
@@ -93,9 +95,9 @@ export default function EstudiantesPage() {
         last_name: '',
         english_level: 'beginner',
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create student:', error)
-      alert('Failed to create student')
+      toast.error(extractErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -122,9 +124,9 @@ export default function EstudiantesPage() {
         last_name: '',
         english_level: 'beginner',
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update student:', error)
-      alert('Failed to update student')
+      toast.error(extractErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -156,9 +158,9 @@ export default function EstudiantesPage() {
       const response = await apiClient.getStudents()
       setStudents(response.results || response)
       setSelectedStudentForEnroll(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to enroll student:', error)
-      alert('Failed to enroll student')
+      toast.error(extractErrorMessage(error))
     }
   }
 
@@ -381,6 +383,7 @@ export default function EstudiantesPage() {
           )}
         </div>
       </div>
+      <ToastContainer toasts={toast.toasts} dismiss={toast.dismiss} />
     </ProtectedRoute>
   )
 }

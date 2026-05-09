@@ -7,6 +7,16 @@ import { apiClient } from '@/lib/api'
 import { User } from '@/types'
 import { Navbar } from '@/components/Navbar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+
+function generatePassword(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  const array = new Uint8Array(12)
+  crypto.getRandomValues(array)
+  return Array.from(array)
+    .map((b) => chars[b % chars.length])
+    .join('')
+}
 
 export default function UsuariosPage() {
   const router = useRouter()
@@ -20,14 +30,19 @@ export default function UsuariosPage() {
     first_name: '',
     last_name: '',
     role: 'student' as const,
+    password: '',
   })
+  const [showPassword, setShowPassword] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [passwordReset, setPasswordReset] = useState<{
-    userId: string
-    email: string
-    temporaryPassword: string
-  } | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Change password modal
+  const [changingPasswordFor, setChangingPasswordFor] = useState<User | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(true)
+  const [copiedNew, setCopiedNew] = useState(false)
+  const [isSavingPassword, setIsSavingPassword] = useState(false)
+  const toast = useToast()
 
   const ROLES = [
     { value: 'admin', label: 'Admin' },
@@ -39,61 +54,53 @@ export default function UsuariosPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        if (!user) {
-          await me()
-        }
-      } catch (error) {
+        if (!user) await me()
+      } catch {
         router.push('/login')
       }
     }
-
     checkAuth()
   }, [user, me, router])
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        if (!user) return
-
-        const response = await apiClient.getUsers()
-        setUsers(response.results || response)
-      } catch (error) {
-        console.error('Failed to load users:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    if (user) {
-      loadData()
-    }
+    if (!user) return
+    apiClient.getUsers().then((res) => {
+      setUsers(res.results || res)
+      setIsLoading(false)
+    })
   }, [user])
+
+  const openCreateForm = () => {
+    setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: generatePassword() })
+    setShowPassword(true)
+    setCopied(false)
+    setShowForm(true)
+  }
+
+  const cancelForm = () => {
+    setShowForm(false)
+    setEditingId(null)
+    setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: '' })
+  }
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
-
     try {
       await apiClient.register({
         email: formData.email,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        password: Math.random().toString(36).slice(-8),
+        password: formData.password,
         role: formData.role,
       })
-
       const response = await apiClient.getUsers()
       setUsers(response.results || response)
       setShowForm(false)
-      setFormData({
-        email: '',
-        first_name: '',
-        last_name: '',
-        role: 'student',
-      })
-    } catch (error) {
+      setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: '' })
+    } catch (error: any) {
       console.error('Failed to create user:', error)
-      alert('Failed to create user')
+      toast.error(extractErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -103,7 +110,6 @@ export default function UsuariosPage() {
     e.preventDefault()
     if (!editingId) return
     setIsSaving(true)
-
     try {
       await apiClient.updateUser(editingId, {
         first_name: formData.first_name,
@@ -111,19 +117,12 @@ export default function UsuariosPage() {
         email: formData.email,
         role: formData.role,
       })
-
       const response = await apiClient.getUsers()
       setUsers(response.results || response)
-      setEditingId(null)
-      setFormData({
-        email: '',
-        first_name: '',
-        last_name: '',
-        role: 'student',
-      })
-    } catch (error) {
+      cancelForm()
+    } catch (error: any) {
       console.error('Failed to update user:', error)
-      alert('Failed to update user')
+      toast.error(extractErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -136,63 +135,54 @@ export default function UsuariosPage() {
       first_name: u.first_name || '',
       last_name: u.last_name || '',
       role: u.role as any,
-    })
-  }
-
-  const cancelEditing = () => {
-    setEditingId(null)
-    setShowForm(false)
-    setFormData({
-      email: '',
-      first_name: '',
-      last_name: '',
-      role: 'student',
+      password: '',
     })
   }
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return
-
+    if (!confirm('¿Seguro que querés eliminar este usuario?')) return
     try {
       await apiClient.deleteUser(id)
       const response = await apiClient.getUsers()
       setUsers(response.results || response)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete user:', error)
-      alert('Failed to delete user')
+      toast.error(extractErrorMessage(error))
     }
   }
 
-  const handleResetPassword = async (id: string) => {
+  const openChangePassword = (u: User) => {
+    setChangingPasswordFor(u)
+    setNewPassword(generatePassword())
+    setShowNewPassword(true)
+    setCopiedNew(false)
+  }
+
+  const handleSavePassword = async () => {
+    if (!changingPasswordFor || !newPassword) return
+    setIsSavingPassword(true)
     try {
-      const response = await apiClient.resetUserPassword(id)
-      setPasswordReset({
-        userId: response.id,
-        email: response.email,
-        temporaryPassword: response.temporary_password,
-      })
-      setCopied(false)
-    } catch (error) {
-      console.error('Failed to reset password:', error)
-      alert('Failed to reset password')
+      await apiClient.resetUserPassword(changingPasswordFor.id, newPassword)
+      setChangingPasswordFor(null)
+      setNewPassword('')
+    } catch (error: any) {
+      console.error('Failed to change password:', error)
+      toast.error(extractErrorMessage(error))
+    } finally {
+      setIsSavingPassword(false)
     }
   }
 
-  const copyPasswordToClipboard = () => {
-    if (passwordReset) {
-      navigator.clipboard.writeText(passwordReset.temporaryPassword)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
+  const copyText = (text: string, setter: (v: boolean) => void) => {
+    navigator.clipboard.writeText(text)
+    setter(true)
+    setTimeout(() => setter(false), 2000)
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -205,81 +195,64 @@ export default function UsuariosPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-              <p className="text-gray-600">Create and manage user accounts</p>
+              <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
+              <p className="text-gray-600">Crear y gestionar cuentas de usuario</p>
             </div>
             {!editingId && (
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={openCreateForm}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
               >
-                {showForm ? '✕ Cancel' : '+ Create User'}
+                + Nuevo usuario
               </button>
             )}
           </div>
 
-          {/* Create/Edit Form */}
+          {/* Create / Edit Form */}
           {(showForm || editingId) && (
             <div className="bg-white rounded-lg shadow mb-8 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
-                {editingId ? 'Edit User' : 'New User'}
+                {editingId ? 'Editar usuario' : 'Nuevo usuario'}
               </h2>
               <form onSubmit={editingId ? handleEditUser : handleCreateUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
                     <input
                       type="text"
                       required
                       value={formData.first_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, first_name: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
                     <input
                       type="text"
                       required
                       value={formData.last_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, last_name: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input
                       type="email"
                       required
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={editingId ? true : false}
+                      disabled={!!editingId}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Role
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
                     <select
                       required
                       value={formData.role}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          role: e.target.value as any,
-                        })
-                      }
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {ROLES.map((role) => (
@@ -289,26 +262,67 @@ export default function UsuariosPage() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Password field — only on create */}
+                  {!editingId && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Contraseña inicial
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+                        >
+                          {showPassword ? 'Ocultar' : 'Ver'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, password: generatePassword() })}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+                        >
+                          Generar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyText(formData.password, setCopied)}
+                          className={`px-3 py-2 rounded-md text-sm font-medium transition ${
+                            copied ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {copied ? '✓ Copiado' : 'Copiar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-2 pt-4">
+
+                <div className="flex gap-2 pt-2">
                   <button
                     type="submit"
                     disabled={isSaving}
                     className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
                   >
                     {editingId
-                      ? isSaving ? '⏳ Saving...' : '✓ Save User'
-                      : isSaving ? '⏳ Creating...' : '✓ Create User'}
+                      ? isSaving ? 'Guardando...' : 'Guardar cambios'
+                      : isSaving ? 'Creando...' : 'Crear usuario'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowForm(false)
-                      cancelEditing()
-                    }}
-                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-2 px-4 rounded-lg transition"
+                    onClick={cancelForm}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
                   >
-                    Cancel
+                    Cancelar
                   </button>
                 </div>
               </form>
@@ -330,97 +344,127 @@ export default function UsuariosPage() {
                           <span className="font-medium">Email:</span> {u.email}
                         </p>
                         <p>
-                          <span className="font-medium">Role:</span>{' '}
-                          <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="font-medium">Rol:</span>{' '}
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {u.role}
                           </span>
                         </p>
                         <p>
-                          <span className="font-medium">Status:</span>{' '}
+                          <span className="font-medium">Estado:</span>{' '}
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              u.is_active
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {u.is_active ? 'Active' : 'Inactive'}
+                            {u.is_active ? 'Activo' : 'Inactivo'}
                           </span>
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap justify-end">
-                      {editingId === u.id ? null : (
-                        <>
-                          <button
-                            onClick={() => startEditing(u)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
-                          >
-                            ✎ Edit
-                          </button>
-                          <button
-                            onClick={() => handleResetPassword(u.id)}
-                            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-sm font-medium transition"
-                          >
-                            🔑 Reset Password
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(u.id)}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
-                          >
-                            🗑 Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {editingId !== u.id && (
+                      <div className="flex gap-2 flex-wrap justify-end">
+                        <button
+                          onClick={() => startEditing(u)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => openChangePassword(u)}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-sm font-medium transition"
+                        >
+                          Contraseña
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-              <p className="text-lg mb-2">No users yet</p>
-              <p className="text-sm">Create a new user to get started</p>
+              <p className="text-lg mb-2">No hay usuarios</p>
+              <p className="text-sm">Creá el primero con el botón de arriba</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Password Reset Modal */}
-      {passwordReset && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Password Reset</h3>
-            <p className="text-gray-600 mb-4">
-              Temporary password for <span className="font-medium">{passwordReset.email}</span>:
+      {/* Change Password Modal */}
+      {changingPasswordFor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Cambiar contraseña</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              {changingPasswordFor.first_name} {changingPasswordFor.last_name} &mdash;{' '}
+              {changingPasswordFor.email}
             </p>
-            <div className="bg-gray-100 p-4 rounded-lg mb-6 flex items-center justify-between">
-              <code className="text-lg font-mono font-bold text-gray-900 break-all">
-                {passwordReset.temporaryPassword}
-              </code>
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nueva contraseña
+            </label>
+            <div className="flex gap-2 mb-2">
+              <div className="relative flex-1">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg"
+                />
+              </div>
               <button
-                onClick={copyPasswordToClipboard}
-                className={`ml-3 px-3 py-2 rounded text-sm font-medium transition whitespace-nowrap ${
-                  copied
-                    ? 'bg-green-600 text-white'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
               >
-                {copied ? '✓ Copied' : '📋 Copy'}
+                {showNewPassword ? 'Ocultar' : 'Ver'}
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-6">
-              Share this temporary password with the user. They should change it after logging in.
-            </p>
-            <button
-              onClick={() => setPasswordReset(null)}
-              className="w-full px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold rounded-lg transition"
-            >
-              Close
-            </button>
+            <div className="flex gap-2 mb-6">
+              <button
+                type="button"
+                onClick={() => { setNewPassword(generatePassword()); setCopiedNew(false) }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Generar nueva
+              </button>
+              <button
+                type="button"
+                onClick={() => copyText(newPassword, setCopiedNew)}
+                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition ${
+                  copiedNew ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {copiedNew ? '✓ Copiada' : 'Copiar'}
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSavePassword}
+                disabled={isSavingPassword || !newPassword}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
+              >
+                {isSavingPassword ? 'Guardando...' : 'Guardar contraseña'}
+              </button>
+              <button
+                onClick={() => setChangingPasswordFor(null)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toast.toasts} dismiss={toast.dismiss} />
     </ProtectedRoute>
   )
 }

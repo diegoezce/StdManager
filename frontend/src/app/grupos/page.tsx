@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api'
 import { Group, Teacher } from '@/types'
 import { Navbar } from '@/components/Navbar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
 export default function GruposPage() {
   const router = useRouter()
@@ -25,6 +26,7 @@ export default function GruposPage() {
     start_date: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -32,7 +34,7 @@ export default function GruposPage() {
         if (!user) {
           await me()
         }
-      } catch (error) {
+      } catch (error: any) {
         router.push('/login')
       }
     }
@@ -55,7 +57,7 @@ export default function GruposPage() {
 
         setGroups(groupsData)
         setTeachers(teachersData)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load data:', error)
       } finally {
         setIsLoading(false)
@@ -92,9 +94,9 @@ export default function GruposPage() {
         description: '',
         start_date: '',
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create group:', error)
-      alert('Failed to create group')
+      toast.error(extractErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -126,9 +128,9 @@ export default function GruposPage() {
         description: '',
         start_date: '',
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update group:', error)
-      alert('Failed to update group')
+      toast.error(extractErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -166,9 +168,9 @@ export default function GruposPage() {
       await apiClient.deleteGroup(id)
       const response = await apiClient.getGroups()
       setGroups(response.results || response)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete group:', error)
-      alert('Failed to delete group')
+      toast.error(extractErrorMessage(error))
     }
   }
 
@@ -396,6 +398,7 @@ export default function GruposPage() {
           )}
         </div>
       </div>
+      <ToastContainer toasts={toast.toasts} dismiss={toast.dismiss} />
     </ProtectedRoute>
   )
 }

@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -11,6 +12,7 @@ from .serializers import (
 from apps.core.permissions import IsSuperAdmin, IsOwner, IsOwnerOrManager
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -48,13 +50,11 @@ class UserViewSet(viewsets.ModelViewSet):
         role = request.data.get('role')
 
         if not role or role not in dict(User.ROLE_CHOICES):
-            return Response(
-                {'error': 'Invalid role'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
 
         user.role = role
         user.save()
+        logger.info('Role updated for user %s → %s by %s', user.email, role, request.user.email)
         return Response(UserSerializer(user).data)
 
     @action(detail=False, methods=['get'])
@@ -64,60 +64,63 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
         user = self.get_object()
-        new_password = User.objects.make_random_password(length=12)
+        new_password = request.data.get('password') or User.objects.make_random_password(length=12)
         user.set_password(new_password)
         user.save()
         return Response({
             'id': user.id,
             'email': user.email,
             'temporary_password': new_password,
-            'message': 'Password has been reset. Share this temporary password with the user.'
+            'message': 'Password updated.',
         })
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def register(request):
-    """Create a new student account (manager/owner only)"""
-    user = request.user
-    if user.role not in ['owner', 'manager']:
+    """Create a new user account (manager/owner only)."""
+    requester = request.user
+    if requester.role not in ['owner', 'manager', 'admin']:
+        logger.warning('Forbidden register attempt by %s (role=%s)', requester.email, requester.role)
         return Response(
-            {'error': 'Only owners and managers can create users'},
-            status=status.HTTP_403_FORBIDDEN
+            {'error': 'Solo owners y managers pueden crear usuarios'},
+            status=status.HTTP_403_FORBIDDEN,
         )
 
     data = request.data.copy()
-    email = data.get('email', '')
-
-    # Auto-generate username from email if not provided
-    if not data.get('username'):
-        data['username'] = email.split('@')[0]
-
-    data['organization'] = user.organization.id
+    email = data.get('email', '').strip()
     data['role'] = data.get('role', 'student')
     data['is_active'] = True
 
+    # Generate unique username from email prefix
+    base_username = email.split('@')[0] if email else 'user'
+    username = base_username
+    counter = 1
+    while User.objects.filter(username=username).exists():
+        username = f'{base_username}{counter}'
+        counter += 1
+    data['username'] = username
+
     serializer = UserCreateUpdateSerializer(data=data)
-    if serializer.is_valid():
-        try:
-            user_obj = serializer.save()
+    if not serializer.is_valid():
+        logger.warning('Register validation failed for %s: %s', email, serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # If creating a student role, create the Student profile
-            if data.get('role') == 'student':
-                from apps.blast.models import Student
-                Student.objects.create(
-                    user=user_obj,
-                    organization=user.organization,
-                    english_level=data.get('english_level', 'beginner')
-                )
+    try:
+        # Pass organization directly so the read_only field in serializer doesn't drop it
+        user_obj = serializer.save(organization=requester.organization)
 
-            return Response(
-                UserSerializer(user_obj).data,
-                status=status.HTTP_201_CREATED
+        if data.get('role') == 'student':
+            from apps.blast.models import Student
+            Student.objects.create(
+                user=user_obj,
+                organization=requester.organization,
+                english_level=data.get('english_level', 'beginner'),
             )
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        logger.info('User created: %s (role=%s) by %s', user_obj.email, user_obj.role, requester.email)
+        return Response(UserSerializer(user_obj).data, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        logger.error('Register failed for %s: %s', email, e, exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

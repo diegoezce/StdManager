@@ -19,16 +19,6 @@ INSTALLED_APPS += [
     'django_extensions',
 ]
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'DEBUG',
-    },
-}
+# Extend base LOGGING: keep file handlers, add DEBUG to console
+LOGGING['root']['level'] = 'DEBUG'
+LOGGING['handlers']['console']['level'] = 'DEBUG'

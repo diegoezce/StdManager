@@ -142,6 +142,18 @@ class APIClient {
     return response.data
   }
 
+  async getStudentsReport(companyId?: string) {
+    const params: any = {}
+    if (companyId) params.company_id = companyId
+    const response = await this.axiosInstance.get('/reports/students/', { params })
+    return response.data
+  }
+
+  async getCorporateClients() {
+    const response = await this.axiosInstance.get('/corporate-clients/')
+    return response.data
+  }
+
   async getCertificates() {
     const response = await this.axiosInstance.get('/certificates/')
     return response.data
@@ -191,8 +203,11 @@ class APIClient {
     await this.axiosInstance.delete(`/auth/users/${id}/`)
   }
 
-  async resetUserPassword(id: string) {
-    const response = await this.axiosInstance.post(`/auth/users/${id}/reset_password/`)
+  async resetUserPassword(id: string, password?: string) {
+    const response = await this.axiosInstance.post(
+      `/auth/users/${id}/reset_password/`,
+      password ? { password } : {}
+    )
     return response.data
   }
 }
