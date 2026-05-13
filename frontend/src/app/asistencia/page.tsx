@@ -20,76 +20,76 @@ export default function AttendancePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [hasExisting, setHasExisting] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        if (!user) {
-          await me()
-        }
-      } catch (error) {
+        if (!user) await me()
+      } catch {
         router.push('/login')
       }
     }
-
     checkAuth()
   }, [user, me, router])
 
   useEffect(() => {
-    const loadGroups = async () => {
-      try {
-        if (!user) return
-
-        const response = await apiClient.getGroups()
-        const groupsData = response.results || response
-        setGroups(groupsData)
-        if (groupsData.length > 0) {
-          setSelectedGroup(groupsData[0])
-        }
-      } catch (error) {
-        console.error('Failed to load groups:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    if (user) {
-      loadGroups()
-    }
+    if (!user) return
+    apiClient.getGroups().then((res) => {
+      const data = res.results || res
+      setGroups(data)
+      if (data.length > 0) setSelectedGroup(data[0])
+    }).catch(console.error).finally(() => setIsLoading(false))
   }, [user])
 
+  // Load enrollments when group changes
   useEffect(() => {
-    const loadEnrollments = async () => {
-      if (!selectedGroup) return
-
-      try {
-        const groupData = await apiClient.getGroup(selectedGroup.id)
-        const enrollmentsData = groupData.enrollments || []
-        setEnrollments(enrollmentsData)
-
-        const initialAttendance: { [key: string]: string } = {}
-        enrollmentsData.forEach((enrollment: Enrollment) => {
-          initialAttendance[enrollment.id] = 'present'
-        })
-        setAttendance(initialAttendance)
-      } catch (error) {
-        console.error('Failed to load enrollments:', error)
-      }
-    }
-
-    loadEnrollments()
+    if (!selectedGroup) return
+    apiClient.getGroup(selectedGroup.id).then((groupData) => {
+      const enrollmentsData: Enrollment[] = groupData.enrollments || []
+      setEnrollments(enrollmentsData)
+      // Reset to all-present as default; existing check will overwrite below
+      const defaults: { [key: string]: string } = {}
+      enrollmentsData.forEach((e) => { defaults[e.id] = 'present' })
+      setAttendance(defaults)
+    }).catch(console.error)
   }, [selectedGroup])
 
+  // Check for existing attendance whenever group or date changes
+  useEffect(() => {
+    if (!selectedGroup || !selectedDate || enrollments.length === 0) {
+      setHasExisting(false)
+      return
+    }
+
+    apiClient.getAttendance(selectedGroup.id, selectedDate).then((res) => {
+      const records: any[] = res.results || res
+      if (records.length === 0) {
+        setHasExisting(false)
+        return
+      }
+
+      setHasExisting(true)
+
+      // Pre-populate form with existing values (match by student id)
+      setAttendance((prev) => {
+        const updated = { ...prev }
+        enrollments.forEach((enrollment) => {
+          const existing = records.find((r: any) => r.student === enrollment.student)
+          if (existing) updated[enrollment.id] = existing.status
+        })
+        return updated
+      })
+    }).catch(console.error)
+  }, [selectedGroup, selectedDate, enrollments])
+
   const handleAttendanceChange = (enrollmentId: string, status: string) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [enrollmentId]: status,
-    }))
+    setAttendance((prev) => ({ ...prev, [enrollmentId]: status }))
   }
 
-  const handleSave = async () => {
+  const doSave = async () => {
     if (!selectedGroup) return
-
     setIsSaving(true)
     setSaveMessage(null)
     try {
@@ -98,9 +98,9 @@ export default function AttendancePage() {
         status: attendance[enrollment.id] || 'present',
         comments: '',
       }))
-
       await apiClient.markAttendanceBulk(selectedGroup.id, selectedDate, attendanceData)
       setSaveMessage({ type: 'success', text: '✓ Attendance saved successfully!' })
+      setHasExisting(true)
       setTimeout(() => setSaveMessage(null), 4000)
     } catch (error) {
       console.error('Failed to save attendance:', error)
@@ -108,6 +108,19 @@ export default function AttendancePage() {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleSaveClick = () => {
+    if (hasExisting) {
+      setShowConfirm(true)
+    } else {
+      doSave()
+    }
+  }
+
+  const handleConfirm = () => {
+    setShowConfirm(false)
+    doSave()
   }
 
   if (isLoading) {
@@ -133,13 +146,7 @@ export default function AttendancePage() {
           </div>
 
           {saveMessage && (
-            <div
-              className={`mb-6 px-4 py-3 rounded-lg ${
-                saveMessage.type === 'success'
-                  ? 'bg-green-100 text-green-800 border border-green-300'
-                  : 'bg-red-100 text-red-800 border border-red-300'
-              }`}
-            >
+            <div className={`mb-6 px-4 py-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>
               {saveMessage.text}
             </div>
           )}
@@ -152,13 +159,12 @@ export default function AttendancePage() {
               onChange={(e) => {
                 const group = groups.find((g) => g.id === e.target.value)
                 setSelectedGroup(group || null)
+                setHasExisting(false)
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name} ({group.level})
-                </option>
+                <option key={group.id} value={group.id}>{group.name} ({group.level})</option>
               ))}
             </select>
           </div>
@@ -174,15 +180,23 @@ export default function AttendancePage() {
             />
           </div>
 
+          {/* Existing attendance warning */}
+          {hasExisting && (
+            <div className="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
+              <span className="text-lg leading-none">⚠</span>
+              <div>
+                <p className="font-semibold">Attendance already recorded for this date</p>
+                <p className="text-amber-700 mt-0.5">The existing values are loaded below. Saving will overwrite them.</p>
+              </div>
+            </div>
+          )}
+
           {/* Attendance List */}
           <div className="space-y-2">
             {enrollments.length > 0 ? (
               <>
                 {enrollments.map((enrollment) => (
-                  <div
-                    key={enrollment.id}
-                    className="bg-white rounded-lg shadow p-4 flex items-center justify-between hover:shadow-md transition"
-                  >
+                  <div key={enrollment.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between hover:shadow-md transition">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{enrollment.student_name}</p>
                     </div>
@@ -200,13 +214,13 @@ export default function AttendancePage() {
                 ))}
 
                 {/* Save Button */}
-                <div className="bg-white rounded-lg shadow p-4 mt-8 flex gap-4">
+                <div className="bg-white rounded-lg shadow p-4 mt-8">
                   <button
-                    onClick={handleSave}
+                    onClick={handleSaveClick}
                     disabled={isSaving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-lg transition"
+                    className={`w-full disabled:opacity-50 text-white font-bold py-3 px-4 rounded-lg transition ${hasExisting ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`}
                   >
-                    {isSaving ? '⏳ Saving...' : '✓ Save Attendance'}
+                    {isSaving ? '⏳ Saving...' : hasExisting ? '⚠ Overwrite Attendance' : '✓ Save Attendance'}
                   </button>
                 </div>
               </>
@@ -219,6 +233,35 @@ export default function AttendancePage() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-2xl">⚠️</span>
+              <h3 className="text-lg font-bold text-gray-900">Overwrite attendance?</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Attendance for <span className="font-semibold">{selectedGroup?.name}</span> on <span className="font-semibold">{selectedDate}</span> has already been recorded. Saving now will overwrite all existing records for this date.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirm}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition"
+              >
+                Yes, overwrite
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   )
 }
