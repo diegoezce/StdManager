@@ -298,17 +298,64 @@ class CertificateViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def attendance_report(request):
-    """Get attendance report for all groups"""
+    """Attendance report aggregated by student, filtered by period."""
+    from datetime import date
+    from dateutil.relativedelta import relativedelta
+
     organization = request.user.organization
+    period = request.query_params.get('period', 'month')  # month | semester | year
 
-    attendance_records = Attendance.objects.filter(
-        organization=organization
-    ).select_related('student', 'group').values(
-        'date', 'student__user__first_name', 'student__user__last_name',
-        'group__name', 'status'
-    ).order_by('-date')
+    today = date.today()
+    if period == 'semester':
+        since = today - relativedelta(months=6)
+    elif period == 'year':
+        since = today - relativedelta(years=1)
+    else:
+        since = today - relativedelta(months=1)
 
-    return Response(list(attendance_records))
+    qs = Attendance.objects.filter(
+        organization=organization,
+        date__gte=since,
+    ).select_related('student__user', 'student__corporate_client', 'group')
+
+    # Corporate clients only see their own students
+    if request.user.role == 'corporate_client':
+        qs = qs.filter(student__corporate_client__contact_email=request.user.email)
+
+    # Aggregate per student
+    from collections import defaultdict
+    rows = defaultdict(lambda: {
+        'present': 0, 'absent': 0, 'late': 0, 'excused': 0,
+        'groups': set(),
+    })
+
+    for record in qs:
+        key = record.student_id
+        rows[key]['student_id'] = str(record.student.id)
+        rows[key]['student_name'] = record.student.user.get_full_name() or record.student.user.email
+        rows[key]['company'] = record.student.corporate_client.company_name if record.student.corporate_client else None
+        rows[key][record.status] += 1
+        rows[key]['groups'].add(record.group.name)
+
+    result = []
+    for row in rows.values():
+        total = row['present'] + row['absent'] + row['late'] + row['excused']
+        attended = row['present'] + row['late']
+        result.append({
+            'student_id': row['student_id'],
+            'student_name': row['student_name'],
+            'company': row['company'],
+            'groups': sorted(row['groups']),
+            'present': row['present'],
+            'absent': row['absent'],
+            'late': row['late'],
+            'excused': row['excused'],
+            'total': total,
+            'rate': round(attended / total * 100, 1) if total > 0 else None,
+        })
+
+    result.sort(key=lambda r: r['student_name'])
+    return Response(result)
 
 
 @api_view(['GET'])

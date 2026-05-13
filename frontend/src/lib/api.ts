@@ -142,6 +142,11 @@ class APIClient {
     return response.data
   }
 
+  async getAttendanceReport(period: 'month' | 'semester' | 'year') {
+    const response = await this.axiosInstance.get('/reports/attendance/', { params: { period } })
+    return response.data
+  }
+
   async getStudentsReport(companyId?: string) {
     const params: any = {}
     if (companyId) params.company_id = companyId
