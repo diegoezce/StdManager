@@ -188,7 +188,14 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTeacher]
 
     def get_queryset(self):
-        return Attendance.objects.filter(organization=self.request.user.organization)
+        qs = Attendance.objects.filter(organization=self.request.user.organization)
+        group = self.request.query_params.get('group')
+        date = self.request.query_params.get('date')
+        if group:
+            qs = qs.filter(group_id=group)
+        if date:
+            qs = qs.filter(date=date)
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, created_by=self.request.user)
