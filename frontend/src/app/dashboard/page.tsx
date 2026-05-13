@@ -172,7 +172,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {hasRole(['owner', 'manager', 'admin', 'teacher', 'corporate_client']) && (
+          {hasRole(['owner', 'manager', 'admin', 'corporate_client']) && (
             <Link href="/reportes">
               <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
                 <div className="px-4 py-5 sm:p-6">

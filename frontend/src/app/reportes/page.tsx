@@ -143,7 +143,7 @@ export default function ReportesPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'teacher', 'corporate_client']}>
+    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client']}>
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 
