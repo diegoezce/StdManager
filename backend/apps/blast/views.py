@@ -318,8 +318,12 @@ def attendance_report(request):
         date__gte=since,
     ).select_related('student__user', 'student__corporate_client', 'group')
 
+    # Teachers only see students from their own groups
+    if request.user.role == 'teacher':
+        qs = qs.filter(group__teacher__user=request.user)
+
     # Corporate clients only see their own students
-    if request.user.role == 'corporate_client':
+    elif request.user.role == 'corporate_client':
         qs = qs.filter(student__corporate_client__contact_email=request.user.email)
 
     # Aggregate per student

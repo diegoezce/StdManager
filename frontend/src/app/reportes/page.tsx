@@ -408,7 +408,7 @@ type Tab = 'students' | 'attendance'
 export default function ReportesPage() {
   const router = useRouter()
   const { user, me } = useAuth()
-  const [activeTab, setActiveTab] = useState<Tab>('students')
+  const [activeTab, setActiveTab] = useState<Tab>(user?.role === 'teacher' ? 'attendance' : 'students')
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -421,10 +421,11 @@ export default function ReportesPage() {
     checkAuth()
   }, [user, me, router])
 
+  const isTeacher = user?.role === 'teacher'
   const today = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
-    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client']}>
+    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client', 'teacher']}>
       <div className="min-h-screen bg-gray-50">
         <Navbar />
 
@@ -444,22 +445,24 @@ export default function ReportesPage() {
             </button>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-1 w-fit print:hidden">
-            {([['students', 'Students'], ['attendance', 'Attendance']] as const).map(([tab, label]) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-                  activeTab === tab
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Tabs — teachers only see Attendance */}
+          {!isTeacher && (
+            <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-1 w-fit print:hidden">
+              {([['students', 'Students'], ['attendance', 'Attendance']] as const).map(([tab, label]) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+                    activeTab === tab
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {activeTab === 'students' ? <StudentsReport /> : <AttendanceReport />}
         </div>
