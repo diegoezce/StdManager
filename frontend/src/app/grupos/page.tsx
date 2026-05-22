@@ -9,6 +9,7 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+import { Modal } from '@/components/Modal'
 
 export default function GruposPage() {
   const router = useRouter()
@@ -86,15 +87,7 @@ export default function GruposPage() {
 
       const response = await apiClient.getGroups()
       setGroups(response.results || response)
-      setShowForm(false)
-      setFormData({
-        name: '',
-        level: 'beginner',
-        teacher: '',
-        max_students: 20,
-        description: '',
-        start_date: '',
-      })
+      cancelEditing()
     } catch (error: any) {
       console.error('Failed to create group:', error)
       toast.error(extractErrorMessage(error))
@@ -120,15 +113,7 @@ export default function GruposPage() {
 
       const response = await apiClient.getGroups()
       setGroups(response.results || response)
-      setEditingId(null)
-      setFormData({
-        name: '',
-        level: 'beginner',
-        teacher: '',
-        max_students: 20,
-        description: '',
-        start_date: '',
-      })
+      cancelEditing()
     } catch (error: any) {
       console.error('Failed to update group:', error)
       toast.error(extractErrorMessage(error))
@@ -147,11 +132,12 @@ export default function GruposPage() {
       description: group.description || '',
       start_date: group.start_date || '',
     })
+    setShowForm(true)
   }
 
   const cancelEditing = () => {
-    setEditingId(null)
     setShowForm(false)
+    setEditingId(null)
     setFormData({
       name: '',
       level: 'beginner',
@@ -197,141 +183,134 @@ export default function GruposPage() {
             title="Grupos"
             subtitle="Crea y administra los grupos de clase."
             actions={
-              !editingId && (
-                <button
-                  onClick={() => setShowForm(!showForm)}
-                  className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
-                >
-                  {showForm ? '✕ Cancelar' : '+ Crear grupo'}
-                </button>
-              )
+              <button
+                onClick={() => { setEditingId(null); setShowForm(true) }}
+                className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+              >
+                + Crear grupo
+              </button>
             }
           />
 
-          {/* Create/Edit Form */}
-          {(showForm || editingId) && (
-            <div className="bg-white rounded-lg shadow mb-8 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                {editingId ? 'Edit Group' : 'New Group'}
-              </h2>
-              <form onSubmit={editingId ? handleEditGroup : handleCreateGroup} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Group Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g., English 101"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Level
-                    </label>
-                    <select
-                      value={formData.level}
-                      onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="beginner">Beginner</option>
-                      <option value="elementary">Elementary</option>
-                      <option value="pre-intermediate">Pre-Intermediate</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="upper-intermediate">Upper Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Teacher
-                    </label>
-                    <select
-                      required
-                      value={formData.teacher}
-                      onChange={(e) => setFormData({ ...formData, teacher: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select a teacher</option>
-                      {teachers.map((teacher) => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.user_name} ({teacher.user_email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Max Students
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={formData.max_students}
-                      onChange={(e) =>
-                        setFormData({ ...formData, max_students: parseInt(e.target.value) })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.start_date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, start_date: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+          <Modal
+            isOpen={showForm}
+            onClose={cancelEditing}
+            title={editingId ? 'Editar grupo' : 'Nuevo grupo'}
+          >
+            <form onSubmit={editingId ? handleEditGroup : handleCreateGroup} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre del grupo
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="ej. English 101"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
+                    Nivel
                   </label>
-                  <textarea
-                    value={formData.description}
+                  <select
+                    value={formData.level}
+                    onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="beginner">Beginner</option>
+                    <option value="elementary">Elementary</option>
+                    <option value="pre-intermediate">Pre-Intermediate</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="upper-intermediate">Upper Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Profesor
+                  </label>
+                  <select
+                    required
+                    value={formData.teacher}
+                    onChange={(e) => setFormData({ ...formData, teacher: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Seleccionar profesor</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.user_name} ({teacher.user_email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Máx. estudiantes
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={formData.max_students}
                     onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
+                      setFormData({ ...formData, max_students: parseInt(e.target.value) })
                     }
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Optional description for the group"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                <div className="flex gap-2 pt-4">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    {editingId
-                      ? isSaving ? '⏳ Saving...' : '✓ Save Group'
-                      : isSaving ? '⏳ Creating...' : '✓ Create Group'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false)
-                      cancelEditing()
-                    }}
-                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    Cancel
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de inicio
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.start_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, start_date: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
-              </form>
-            </div>
-          )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descripción
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Descripción opcional del grupo"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  {editingId
+                    ? isSaving ? 'Guardando...' : 'Guardar cambios'
+                    : isSaving ? 'Creando...' : 'Crear grupo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </Modal>
 
           {/* Groups List */}
           {groups.length > 0 ? (

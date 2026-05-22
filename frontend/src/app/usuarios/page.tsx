@@ -9,6 +9,7 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+import { Modal } from '@/components/Modal'
 
 const ROLE_BADGE: Record<string, string> = {
   owner:            'bg-red-100 text-red-800',
@@ -165,6 +166,7 @@ export default function UsuariosPage() {
       role: u.role as any,
       password: '',
     })
+    setShowForm(true)
   }
 
   const handleDeleteUser = async (id: string) => {
@@ -265,7 +267,7 @@ export default function UsuariosPage() {
             subtitle="Crea, gestiona y asigna roles a las cuentas de tu organización."
             actions={
               <>
-                {user?.role === 'owner' && !editingId && (
+                {user?.role === 'owner' && (
                   <button
                     onClick={() => setShowTransferModal(true)}
                     className="bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded-md transition text-sm"
@@ -273,138 +275,113 @@ export default function UsuariosPage() {
                     Transferir ownership
                   </button>
                 )}
-                {!editingId && (
-                  <button
-                    onClick={openCreateForm}
-                    className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
-                  >
-                    + Nuevo usuario
-                  </button>
-                )}
+                <button
+                  onClick={openCreateForm}
+                  className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  + Nuevo usuario
+                </button>
               </>
             }
           />
 
-          {/* Create / Edit Form */}
-          {(showForm || editingId) && (
-            <div className="bg-white rounded-lg shadow mb-8 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                {editingId ? 'Edit user' : 'New user'}
-              </h2>
-              <form onSubmit={editingId ? handleEditUser : handleCreateUser} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      disabled={!!editingId}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                    <select
-                      required
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {ROLES.map((role) => (
-                        <option key={role.value} value={role.value}>
-                          {role.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Password field — only on create */}
-                  {!editingId && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Initial password
-                      </label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            required
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
-                        >
-                          {showPassword ? 'Hide' : 'Show'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, password: generatePassword() })}
-                          className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
-                        >
-                          Generate
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => copyText(formData.password, setCopied)}
-                          className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                            copied ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {copied ? '✓ Copied' : 'Copy'}
-                        </button>
-                      </div>
+          <Modal
+            isOpen={showForm}
+            onClose={cancelForm}
+            title={editingId ? 'Editar usuario' : 'Nuevo usuario'}
+          >
+            <form onSubmit={editingId ? handleEditUser : handleCreateUser} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={!!editingId}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                  <select
+                    required
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {ROLES.map((role) => (
+                      <option key={role.value} value={role.value}>{role.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {!editingId && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contraseña inicial
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50">
+                        {showPassword ? 'Ocultar' : 'Ver'}
+                      </button>
+                      <button type="button" onClick={() => setFormData({ ...formData, password: generatePassword() })}
+                        className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50">
+                        Generar
+                      </button>
+                      <button type="button" onClick={() => copyText(formData.password, setCopied)}
+                        className={`px-3 py-2 rounded-md text-sm font-medium transition ${copied ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                        {copied ? '✓ Copiado' : 'Copiar'}
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    {editingId
-                      ? isSaving ? 'Saving...' : 'Save changes'
-                      : isSaving ? 'Creating...' : 'Create user'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelForm}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  {editingId
+                    ? isSaving ? 'Guardando...' : 'Guardar cambios'
+                    : isSaving ? 'Creando...' : 'Crear usuario'}
+                </button>
+                <button type="button" onClick={cancelForm}
+                  className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </Modal>
 
           {/* Users List */}
           {users.length > 0 ? (
@@ -412,9 +389,7 @@ export default function UsuariosPage() {
               {users.map((u) => (
                 <div
                   key={u.id}
-                  className={`bg-white rounded-lg shadow p-6 transition ${
-                    editingId === u.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
+                  className="bg-white rounded-lg shadow p-6 transition"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -521,120 +496,92 @@ export default function UsuariosPage() {
         </div>
       </div>
 
-      {/* Change Password Modal */}
-      {changingPasswordFor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Change password</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              {changingPasswordFor.first_name} {changingPasswordFor.last_name} &mdash;{' '}
-              {changingPasswordFor.email}
+      <Modal
+        isOpen={!!changingPasswordFor}
+        onClose={() => setChangingPasswordFor(null)}
+        title="Cambiar contraseña"
+      >
+        {changingPasswordFor && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              {changingPasswordFor.first_name} {changingPasswordFor.last_name} — {changingPasswordFor.email}
             </p>
-
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              New password
-            </label>
-            <div className="flex gap-2 mb-2">
-              <div className="relative flex-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nueva contraseña</label>
+              <div className="flex gap-2 mb-2">
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                 />
+                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50">
+                  {showNewPassword ? 'Ocultar' : 'Ver'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
-              >
-                {showNewPassword ? 'Hide' : 'Show'}
-              </button>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setNewPassword(generatePassword()); setCopiedNew(false) }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50">
+                  Generar nueva
+                </button>
+                <button type="button" onClick={() => copyText(newPassword, setCopiedNew)}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition ${copiedNew ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                  {copiedNew ? '✓ Copiado' : 'Copiar'}
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 mb-6">
-              <button
-                type="button"
-                onClick={() => { setNewPassword(generatePassword()); setCopiedNew(false) }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Generate new
+            <div className="flex gap-2 pt-2">
+              <button onClick={handleSavePassword} disabled={isSavingPassword || !newPassword}
+                className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition">
+                {isSavingPassword ? 'Guardando...' : 'Guardar contraseña'}
               </button>
-              <button
-                type="button"
-                onClick={() => copyText(newPassword, setCopiedNew)}
-                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition ${
-                  copiedNew ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {copiedNew ? '✓ Copied' : 'Copy'}
-              </button>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleSavePassword}
-                disabled={isSavingPassword || !newPassword}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
-              >
-                {isSavingPassword ? 'Saving...' : 'Save password'}
-              </button>
-              <button
-                onClick={() => setChangingPasswordFor(null)}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transfer Ownership Modal */}
-      {showTransferModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Transferir Ownership</h3>
-            <p className="text-sm text-gray-500 mb-1">
-              Tu rol pasará a <strong>Manager</strong>. El usuario seleccionado se convertirá en el nuevo <strong>Owner</strong>.
-            </p>
-            <p className="text-xs text-amber-600 mb-5 font-medium">Esta acción no se puede deshacer fácilmente.</p>
-
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Seleccionar nuevo owner
-            </label>
-            <select
-              value={transferTargetId}
-              onChange={(e) => setTransferTargetId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-6 focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              <option value="">-- Elige un usuario --</option>
-              {users
-                .filter((u) => u.id !== user?.id && u.role !== 'super_admin')
-                .map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.first_name} {u.last_name} ({u.email}) — {u.role}
-                  </option>
-                ))}
-            </select>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleTransferOwnership}
-                disabled={isTransferring || !transferTargetId}
-                className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
-              >
-                {isTransferring ? 'Transfiriendo...' : 'Confirmar transferencia'}
-              </button>
-              <button
-                onClick={() => { setShowTransferModal(false); setTransferTargetId('') }}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
-              >
+              <button onClick={() => setChangingPasswordFor(null)}
+                className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition">
                 Cancelar
               </button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showTransferModal}
+        onClose={() => { setShowTransferModal(false); setTransferTargetId('') }}
+        title="Transferir Ownership"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Tu rol pasará a <strong>Manager</strong>. El usuario seleccionado se convertirá en el nuevo <strong>Owner</strong>.
+          </p>
+          <p className="text-xs text-amber-600 font-medium">Esta acción no se puede deshacer fácilmente.</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar nuevo owner</label>
+            <select
+              value={transferTargetId}
+              onChange={(e) => setTransferTargetId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="">-- Elige un usuario --</option>
+              {users.filter((u) => u.id !== user?.id && u.role !== 'super_admin').map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.first_name} {u.last_name} ({u.email}) — {u.role}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button onClick={handleTransferOwnership} disabled={isTransferring || !transferTargetId}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition">
+              {isTransferring ? 'Transfiriendo...' : 'Confirmar transferencia'}
+            </button>
+            <button onClick={() => { setShowTransferModal(false); setTransferTargetId('') }}
+              className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition">
+              Cancelar
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       <ToastContainer toasts={toast.toasts} dismiss={toast.dismiss} />
     </ProtectedRoute>

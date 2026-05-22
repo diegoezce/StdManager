@@ -9,6 +9,7 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+import { Modal } from '@/components/Modal'
 
 export default function EstudiantesPage() {
   const router = useRouter()
@@ -91,14 +92,7 @@ export default function EstudiantesPage() {
 
       const response = await apiClient.getStudents()
       setStudents(response.results || response)
-      setShowForm(false)
-      setFormData({
-        email: '',
-        first_name: '',
-        last_name: '',
-        english_level: 'beginner',
-        corporate_client: null,
-      })
+      cancelEditing()
     } catch (error: any) {
       console.error('Failed to create student:', error)
       toast.error(extractErrorMessage(error))
@@ -122,14 +116,7 @@ export default function EstudiantesPage() {
 
       const response = await apiClient.getStudents()
       setStudents(response.results || response)
-      setEditingId(null)
-      setFormData({
-        email: '',
-        first_name: '',
-        last_name: '',
-        english_level: 'beginner',
-        corporate_client: null,
-      })
+      cancelEditing()
     } catch (error: any) {
       console.error('Failed to update student:', error)
       toast.error(extractErrorMessage(error))
@@ -147,9 +134,11 @@ export default function EstudiantesPage() {
       english_level: student.english_level || 'beginner',
       corporate_client: student.corporate_client || null,
     })
+    setShowForm(true)
   }
 
   const cancelEditing = () => {
+    setShowForm(false)
     setEditingId(null)
     setFormData({
       email: '',
@@ -194,130 +183,103 @@ export default function EstudiantesPage() {
             title="Estudiantes"
             subtitle="Crea y gestiona cuentas de estudiantes."
             actions={
-              !editingId && (
-                <button
-                  onClick={() => setShowForm(!showForm)}
-                  className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
-                >
-                  {showForm ? '✕ Cancelar' : '+ Crear estudiante'}
-                </button>
-              )
+              <button
+                onClick={() => { setEditingId(null); setShowForm(true) }}
+                className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+              >
+                + Crear estudiante
+              </button>
             }
           />
 
-          {/* Create/Edit Form */}
-          {(showForm || editingId) && (
-            <div className="bg-white rounded-lg shadow mb-8 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                {editingId ? 'Edit Student' : 'New Student'}
-              </h2>
-              <form onSubmit={editingId ? handleEditStudent : handleCreateStudent} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Modal
+            isOpen={showForm}
+            onClose={cancelEditing}
+            title={editingId ? 'Editar estudiante' : 'Nuevo estudiante'}
+          >
+            <form onSubmit={editingId ? handleEditStudent : handleCreateStudent} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {!editingId && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.first_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, first_name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.last_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, last_name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  {!editingId && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        English level
-                      </label>
-                      <select
-                        value={formData.english_level}
-                        onChange={(e) =>
-                          setFormData({ ...formData, english_level: e.target.value as any })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="beginner">A1 – Beginner</option>
-                        <option value="elementary">A2 – Elementary</option>
-                        <option value="pre-intermediate">B1 – Pre-Intermediate</option>
-                        <option value="intermediate">B1+ – Intermediate</option>
-                        <option value="upper-intermediate">B2 – Upper Intermediate</option>
-                        <option value="advanced">C1 – Advanced</option>
-                      </select>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Company
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nivel de inglés</label>
                     <select
-                      value={formData.corporate_client || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, corporate_client: e.target.value || null })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.english_level}
+                      onChange={(e) => setFormData({ ...formData, english_level: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="">No company</option>
-                      {corporateClients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.company_name}
-                        </option>
-                      ))}
+                      <option value="beginner">A1 – Beginner</option>
+                      <option value="elementary">A2 – Elementary</option>
+                      <option value="pre-intermediate">B1 – Pre-Intermediate</option>
+                      <option value="intermediate">B1+ – Intermediate</option>
+                      <option value="upper-intermediate">B2 – Upper Intermediate</option>
+                      <option value="advanced">C1 – Advanced</option>
                     </select>
                   </div>
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                  <select
+                    value={formData.corporate_client || ''}
+                    onChange={(e) => setFormData({ ...formData, corporate_client: e.target.value || null })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    {editingId
-                      ? isSaving ? '⏳ Saving...' : '✓ Save Student'
-                      : isSaving ? '⏳ Creating...' : '✓ Create Student'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false)
-                      cancelEditing()
-                    }}
-                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    Cancel
-                  </button>
+                    <option value="">Sin empresa</option>
+                    {corporateClients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.company_name}</option>
+                    ))}
+                  </select>
                 </div>
-              </form>
-            </div>
-          )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  {editingId
+                    ? isSaving ? 'Guardando...' : 'Guardar cambios'
+                    : isSaving ? 'Creando...' : 'Crear estudiante'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </Modal>
 
           {/* Students List */}
           {students.length > 0 ? (

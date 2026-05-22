@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+import { Modal } from '@/components/Modal'
 
 interface CorporateClient {
   id: string
@@ -145,107 +146,98 @@ export default function EmpresasPage() {
             }
           />
 
-          {/* Form */}
-          {showForm && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-5">
-                {editingId ? 'Edit company' : 'New company'}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Company name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.company_name}
-                      onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g. Acme Corp"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.contact_name}
-                      onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.contact_email}
-                      onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.contact_phone}
-                      onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  {editingId && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="is_active"
-                        checked={formData.is_active}
-                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                        className="rounded"
-                      />
-                      <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Active company
-                      </label>
-                    </div>
-                  )}
+          <Modal
+            isOpen={showForm}
+            onClose={cancelForm}
+            title={editingId ? 'Editar empresa' : 'Nueva empresa'}
+          >
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre de empresa <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.company_name}
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="ej. Acme Corp"
+                  />
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    {isSaving ? 'Saving...' : editingId ? 'Save changes' : 'Create company'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelForm}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
-                  >
-                    Cancel
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contacto <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.contact_name}
+                    onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
-              </form>
-            </div>
-          )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email de contacto <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.contact_email}
+                    onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                  <input
+                    type="text"
+                    value={formData.contact_phone}
+                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {editingId && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="rounded"
+                    />
+                    <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
+                      Empresa activa
+                    </label>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  {isSaving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear empresa'}
+                </button>
+                <button type="button" onClick={cancelForm}
+                  className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </Modal>
 
           {/* List */}
           {clients.length === 0 ? (
