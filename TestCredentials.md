@@ -24,3 +24,6 @@ test123
 
 student3@blast.com
 test123
+
+Corporate@blast.com
+test123
