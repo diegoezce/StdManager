@@ -33,6 +33,7 @@ export default function UsuariosPage() {
   const router = useRouter()
   const { user, me } = useAuth()
   const [users, setUsers] = useState<User[]>([])
+  const [corporateClients, setCorporateClients] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -42,6 +43,7 @@ export default function UsuariosPage() {
     last_name: '',
     role: 'student' as const,
     password: '',
+    corporate_client: '' as string,
   })
   const [showPassword, setShowPassword] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -93,14 +95,18 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     if (!user) return
-    apiClient.getUsers().then((res) => {
-      setUsers(res.results || res)
+    Promise.all([
+      apiClient.getUsers(),
+      apiClient.getCorporateClients(),
+    ]).then(([usersRes, clientsRes]) => {
+      setUsers(usersRes.results || usersRes)
+      setCorporateClients(clientsRes.results || clientsRes)
       setIsLoading(false)
     })
   }, [user])
 
   const openCreateForm = () => {
-    setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: generatePassword() })
+    setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: generatePassword(), corporate_client: '' })
     setShowPassword(true)
     setCopied(false)
     setShowForm(true)
@@ -109,7 +115,7 @@ export default function UsuariosPage() {
   const cancelForm = () => {
     setShowForm(false)
     setEditingId(null)
-    setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: '' })
+    setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: '', corporate_client: '' })
   }
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -122,6 +128,7 @@ export default function UsuariosPage() {
         last_name: formData.last_name,
         password: formData.password,
         role: formData.role,
+        ...(formData.corporate_client ? { corporate_client: formData.corporate_client } : {}),
       })
       const response = await apiClient.getUsers()
       setUsers(response.results || response)
@@ -145,6 +152,7 @@ export default function UsuariosPage() {
         last_name: formData.last_name,
         email: formData.email,
         role: formData.role,
+        corporate_client: formData.corporate_client || null,
       })
       const response = await apiClient.getUsers()
       setUsers(response.results || response)
@@ -165,6 +173,7 @@ export default function UsuariosPage() {
       last_name: u.last_name || '',
       role: u.role as any,
       password: '',
+      corporate_client: u.corporate_client || '',
     })
     setShowForm(true)
   }
@@ -328,7 +337,7 @@ export default function UsuariosPage() {
                   <select
                     required
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any, corporate_client: '' })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     {ROLES.map((role) => (
@@ -336,6 +345,22 @@ export default function UsuariosPage() {
                     ))}
                   </select>
                 </div>
+                {formData.role === 'corporate_client' && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                    <select
+                      required
+                      value={formData.corporate_client}
+                      onChange={(e) => setFormData({ ...formData, corporate_client: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">-- Seleccionar empresa --</option>
+                      {corporateClients.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.company_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {!editingId && (
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -440,6 +465,12 @@ export default function UsuariosPage() {
                             </button>
                           )}
                         </div>
+                        {u.role === 'corporate_client' && u.corporate_client && (
+                          <p>
+                            <span className="font-medium">Empresa:</span>{' '}
+                            {corporateClients.find((c: any) => c.id === u.corporate_client)?.company_name || u.corporate_client}
+                          </p>
+                        )}
                         <p>
                           <span className="font-medium">Estado:</span>{' '}
                           <span

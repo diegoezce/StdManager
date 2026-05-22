@@ -20,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'organization_id', 'organization_name', 'organization_slug', 'brand_name', 'is_active', 'created_at')
+        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'organization_id', 'organization_name', 'organization_slug', 'brand_name', 'is_active', 'created_at', 'corporate_client')
         read_only_fields = ('id', 'created_at')
 
     def get_organization_name(self, obj):
@@ -38,7 +38,7 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'password', 'role', 'organization', 'is_active', 'username')
+        fields = ('id', 'email', 'first_name', 'last_name', 'password', 'role', 'organization', 'is_active', 'username', 'corporate_client')
         read_only_fields = ('id', 'organization')
 
     def create(self, validated_data):
