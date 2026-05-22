@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 export default function MiProgresoPage() {
@@ -59,14 +60,15 @@ export default function MiProgresoPage() {
 
   return (
     <ProtectedRoute allowedRoles={['student']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">My Progress</h1>
-            <p className="text-gray-600">Your attendance, grades, and certificates</p>
-          </div>
+          <PageHeader
+            eyebrow="Estudiante"
+            title="Mi progreso"
+            subtitle="Asistencia, calificaciones y certificados."
+          />
 
           {progress ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

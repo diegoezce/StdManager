@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
@@ -259,23 +260,23 @@ export default function AdminPage() {
 
   return (
     <ProtectedRoute allowedRoles={['super_admin']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Panel Super Admin</h1>
-              <p className="text-gray-500 text-sm mt-1">{orgs.length} organizaciones registradas</p>
-            </div>
-            <button
-              onClick={() => setShowCreateOrg(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition"
-            >
-              + Nueva organización
-            </button>
-          </div>
+          <PageHeader
+            eyebrow="Super admin"
+            title="Panel de control"
+            subtitle={`${orgs.length} organizaciones registradas.`}
+            actions={
+              <button
+                onClick={() => setShowCreateOrg(true)}
+                className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+              >
+                + Nueva organización
+              </button>
+            }
+          />
 
           {/* Stats bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

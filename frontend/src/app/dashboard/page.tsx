@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { Organization } from '@/types'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -66,16 +67,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {organization?.name || 'Organization'}
-          </h2>
-          <p className="text-gray-600">Welcome {user?.first_name || 'back'}!</p>
-        </div>
+        <PageHeader
+          eyebrow="Panel general"
+          title={organization?.name || 'Organization'}
+          subtitle={`Bienvenido${user?.first_name ? `, ${user.first_name}` : ''}.`}
+        />
 
         {/* Owner/Manager/Admin Stats */}
         {stats && hasRole(['owner', 'manager', 'admin']) && (

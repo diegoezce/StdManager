@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { User } from '@/types'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
@@ -254,34 +255,35 @@ export default function UsuariosPage() {
 
   return (
     <ProtectedRoute allowedRoles={['owner', 'manager', 'admin']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-              <p className="text-gray-600">Crea y gestiona cuentas de usuario</p>
-            </div>
-            <div className="flex gap-2">
-              {user?.role === 'owner' && !editingId && (
-                <button
-                  onClick={() => setShowTransferModal(true)}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition text-sm"
-                >
-                  Transferir ownership
-                </button>
-              )}
-              {!editingId && (
-                <button
-                  onClick={openCreateForm}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
-                >
-                  + Nuevo usuario
-                </button>
-              )}
-            </div>
-          </div>
+          <PageHeader
+            eyebrow="Administración"
+            title="Usuarios"
+            subtitle="Crea, gestiona y asigna roles a las cuentas de tu organización."
+            actions={
+              <>
+                {user?.role === 'owner' && !editingId && (
+                  <button
+                    onClick={() => setShowTransferModal(true)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded-md transition text-sm"
+                  >
+                    Transferir ownership
+                  </button>
+                )}
+                {!editingId && (
+                  <button
+                    onClick={openCreateForm}
+                    className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+                  >
+                    + Nuevo usuario
+                  </button>
+                )}
+              </>
+            }
+          />
 
           {/* Create / Edit Form */}
           {(showForm || editingId) && (

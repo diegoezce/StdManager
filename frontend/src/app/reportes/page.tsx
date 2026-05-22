@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 // ── Shared ──────────────────────────────────────────────────────────────────
@@ -426,24 +427,24 @@ export default function ReportesPage() {
 
   return (
     <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client', 'teacher']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-          {/* Header */}
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 print:mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-              <p className="text-sm text-gray-500 mt-1">Generated on {today}</p>
-            </div>
-            <button
-              onClick={() => window.print()}
-              className="self-start sm:self-auto px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition print:hidden"
-            >
-              Print / Export PDF
-            </button>
-          </div>
+          <PageHeader
+            eyebrow="Analítica"
+            title="Reportes"
+            subtitle={`Generado el ${today}.`}
+            actions={
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 transition print:hidden"
+              >
+                Imprimir / Exportar PDF
+              </button>
+            }
+          />
 
           {/* Tabs — teachers only see Attendance */}
           {!isTeacher && (

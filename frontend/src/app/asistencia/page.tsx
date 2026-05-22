@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api'
 import { Group, Enrollment } from '@/types'
 import { format } from 'date-fns'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 export default function AttendancePage() {
@@ -136,14 +137,15 @@ export default function AttendancePage() {
 
   return (
     <ProtectedRoute allowedRoles={['teacher', 'manager', 'admin']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
 
         <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Mark Attendance</h1>
-            <p className="text-gray-600">Quickly mark attendance for your class</p>
-          </div>
+          <PageHeader
+            eyebrow="Académico"
+            title="Asistencia"
+            subtitle="Registra rápidamente la asistencia de tu clase."
+          />
 
           {saveMessage && (
             <div className={`mb-6 px-4 py-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>

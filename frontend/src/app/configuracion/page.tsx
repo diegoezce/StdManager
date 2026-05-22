@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+import { PageHeader } from '@/components/PageHeader'
 
 export default function ConfiguracionPage() {
   const router = useRouter()
@@ -56,8 +57,11 @@ export default function ConfiguracionPage() {
         Back
       </button>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-      <p className="text-sm text-gray-500 mb-8">Organization settings</p>
+      <PageHeader
+        eyebrow="Configuración"
+        title="Ajustes"
+        subtitle="Preferencias de la organización."
+      />
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
         <div>

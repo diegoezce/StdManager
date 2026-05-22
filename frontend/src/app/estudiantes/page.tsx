@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
 import { Student, Group } from '@/types'
 import { Navbar } from '@/components/Navbar'
+import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
@@ -184,24 +185,25 @@ export default function EstudiantesPage() {
 
   return (
     <ProtectedRoute allowedRoles={['owner', 'manager', 'admin']}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Manage Students</h1>
-              <p className="text-gray-600">Add and manage student accounts</p>
-            </div>
-            {!editingId && (
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
-              >
-                {showForm ? '✕ Cancel' : '+ Create Student'}
-              </button>
-            )}
-          </div>
+          <PageHeader
+            eyebrow="Comunidad"
+            title="Estudiantes"
+            subtitle="Crea y gestiona cuentas de estudiantes."
+            actions={
+              !editingId && (
+                <button
+                  onClick={() => setShowForm(!showForm)}
+                  className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  {showForm ? '✕ Cancelar' : '+ Crear estudiante'}
+                </button>
+              )
+            }
+          />
 
           {/* Create/Edit Form */}
           {(showForm || editingId) && (
