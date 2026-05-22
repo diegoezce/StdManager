@@ -28,6 +28,7 @@ export function Navbar() {
     { label: 'Attendance', href: '/asistencia', roles: ['teacher', 'manager', 'admin'] },
     { label: 'My Groups', href: '/mis-grupos', roles: ['student'] },
     { label: 'My Progress', href: '/mi-progreso', roles: ['student'] },
+    { label: 'Estudiantes', href: '/estudiantes', roles: ['corporate_client'] },
     { label: 'Reports', href: '/reportes', roles: ['owner', 'manager', 'admin', 'corporate_client', 'teacher'] },
     { label: 'Settings', href: '/configuracion', roles: ['owner', 'admin'] },
   ]

@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const { user, me, hasRole } = useAuth()
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [stats, setStats] = useState<any>(null)
+  const [clientStudents, setClientStudents] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -42,6 +43,11 @@ export default function DashboardPage() {
         if (org && hasRole(['owner', 'manager', 'admin'])) {
           const stats = await apiClient.getOrganizationStats(org.slug)
           setStats(stats)
+        }
+
+        if (hasRole(['corporate_client'])) {
+          const res = await apiClient.getStudents()
+          setClientStudents(res.results || res)
         }
       } catch (error) {
         console.error('Failed to load dashboard:', error)
@@ -166,6 +172,28 @@ export default function DashboardPage() {
                   <div className="px-4 py-5 sm:p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-2">📊 My Progress</h3>
                     <p className="text-gray-600 text-sm">Check your attendance and grades</p>
+                  </div>
+                </div>
+              </Link>
+            </>
+          )}
+
+          {hasRole(['corporate_client']) && (
+            <>
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <dt className="text-sm font-medium text-gray-500">Mis estudiantes</dt>
+                  <dd className="mt-1 text-3xl font-extrabold text-gray-900">{clientStudents.length}</dd>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {clientStudents.filter((s) => s.is_active).length} activos
+                  </p>
+                </div>
+              </div>
+              <Link href="/estudiantes">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                  <div className="px-4 py-5 sm:p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">👥 Ver estudiantes</h3>
+                    <p className="text-gray-600 text-sm">Listado de empleados inscriptos</p>
                   </div>
                 </div>
               </Link>

@@ -13,7 +13,8 @@ import { Modal } from '@/components/Modal'
 
 export default function EstudiantesPage() {
   const router = useRouter()
-  const { user, me } = useAuth()
+  const { user, me, hasRole } = useAuth()
+  const isReadOnly = !hasRole(['owner', 'manager', 'admin'])
   const [students, setStudents] = useState<Student[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [corporateClients, setCorporateClients] = useState<{ id: string; company_name: string }[]>([])
@@ -173,7 +174,7 @@ export default function EstudiantesPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin']}>
+    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client']}>
       <div className="min-h-screen bg-slate-50">
         <Navbar />
 
@@ -183,12 +184,14 @@ export default function EstudiantesPage() {
             title="Estudiantes"
             subtitle="Crea y gestiona cuentas de estudiantes."
             actions={
-              <button
-                onClick={() => { setEditingId(null); setShowForm(true) }}
-                className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
-              >
-                + Crear estudiante
-              </button>
+              !isReadOnly && (
+                <button
+                  onClick={() => { setEditingId(null); setShowForm(true) }}
+                  className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  + Crear estudiante
+                </button>
+              )
             }
           />
 
@@ -320,7 +323,7 @@ export default function EstudiantesPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {editingId === student.id ? null : selectedStudentForEnroll === student.id ? (
+                      {isReadOnly ? null : editingId === student.id ? null : selectedStudentForEnroll === student.id ? (
                         <div className="flex flex-col gap-2 min-w-[250px]">
                           <select
                             onChange={(e) => {
