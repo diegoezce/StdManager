@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { BlastLogo } from '@/components/BlastLogo'
 
 export function Navbar() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
   const { user, logout, hasRole } = useAuth()
 
@@ -54,7 +56,7 @@ export function Navbar() {
   return (
     <nav className="bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/dashboard" className="flex items-center">
               {user.brand_name || user.organization_name ? (
@@ -80,19 +82,49 @@ export function Navbar() {
               ))}
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+
+          <div className="flex items-center space-x-2 md:space-x-3">
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor()}`}>
               {user.role}
             </span>
             <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
+
             <button
               onClick={handleLogout}
               className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition"
             >
               Salir
             </button>
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-md text-slate-600 hover:text-indigo-700 hover:bg-slate-50"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 py-2">
+            {visibleItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-indigo-700 hover:bg-slate-50 transition"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </nav>
   )
