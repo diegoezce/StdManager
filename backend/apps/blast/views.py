@@ -55,6 +55,8 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'super_admin':
+            return Student.objects.all()
         if user.role in ['owner', 'manager', 'admin']:
             return Student.objects.filter(organization=user.organization)
         elif user.role == 'student':
@@ -97,6 +99,8 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'super_admin':
+            return Group.objects.all()
         if user.role in ['owner', 'manager', 'admin']:
             return Group.objects.filter(organization=user.organization)
         elif user.role == 'teacher':
@@ -173,6 +177,8 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'super_admin':
+            return Enrollment.objects.all()
         if user.role in ['owner', 'manager']:
             return Enrollment.objects.filter(organization=user.organization)
         elif user.role == 'student':
@@ -253,6 +259,8 @@ class CertificateViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if user.role == 'super_admin':
+            return Certificate.objects.all()
         if user.role in ['owner', 'manager']:
             return Certificate.objects.filter(organization=user.organization)
         elif user.role == 'student':
