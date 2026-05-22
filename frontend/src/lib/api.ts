@@ -222,8 +222,24 @@ class APIClient {
     await this.axiosInstance.delete(`/auth/users/${id}/`)
   }
 
-  async updateOrganization(slug: string, data: { name?: string; brand_name?: string }) {
+  async updateOrganization(
+    slug: string,
+    data: Partial<{ name: string; brand_name: string; license_number: string; status: string; max_users: number; is_active: boolean }>
+  ) {
     const response = await this.axiosInstance.patch(`/organizations/${slug}/`, data)
+    return response.data
+  }
+
+  async adminAssignOwner(slug: string, email: string) {
+    const response = await this.axiosInstance.post(`/organizations/${slug}/assign-owner/`, { email })
+    return response.data
+  }
+
+  async adminCreateOwner(
+    slug: string,
+    data: { email: string; password: string; first_name?: string; last_name?: string }
+  ) {
+    const response = await this.axiosInstance.post(`/organizations/${slug}/create-owner/`, data)
     return response.data
   }
 
@@ -232,6 +248,39 @@ class APIClient {
       `/auth/users/${id}/reset_password/`,
       password ? { password } : {}
     )
+    return response.data
+  }
+
+  async assignRole(userId: string, role: string) {
+    const response = await this.axiosInstance.post(`/auth/users/${userId}/assign_role/`, { role })
+    return response.data
+  }
+
+  // Super admin: organizations management
+  async adminGetOrganizations() {
+    const response = await this.axiosInstance.get('/organizations/')
+    return response.data
+  }
+
+  async adminUpdateOrgStatus(slug: string, status: string) {
+    const response = await this.axiosInstance.patch(`/organizations/${slug}/update-status/`, { status })
+    return response.data
+  }
+
+  async adminUpdateOrgLicense(slug: string, data: Record<string, unknown>) {
+    const response = await this.axiosInstance.patch(`/organizations/${slug}/update-license/`, data)
+    return response.data
+  }
+
+  async adminCreateOrganization(data: Record<string, unknown>) {
+    const response = await this.axiosInstance.post('/organizations/', data)
+    return response.data
+  }
+
+  async transferOwnership(slug: string, newOwnerId: string) {
+    const response = await this.axiosInstance.post(`/organizations/${slug}/transfer-ownership/`, {
+      new_owner_id: newOwnerId,
+    })
     return response.data
   }
 }

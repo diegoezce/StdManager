@@ -44,16 +44,34 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def assign_role(self, request, pk=None):
-        user = self.get_object()
+        target_user = self.get_object()
         role = request.data.get('role')
+        requester = request.user
 
         if not role or role not in dict(User.ROLE_CHOICES):
-            return Response({'error': 'Invalid role'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Rol inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user.role = role
-        user.save()
-        logger.info('Role updated for user %s → %s by %s', user.email, role, request.user.email)
-        return Response(UserSerializer(user).data)
+        # Only super_admin can assign or remove super_admin role
+        if role == 'super_admin' and requester.role != 'super_admin':
+            return Response({'error': 'Solo un super admin puede asignar ese rol.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Owners cannot change their own role (use transfer_ownership instead)
+        if target_user.id == requester.id and requester.role == 'owner':
+            return Response({'error': 'Un owner no puede cambiar su propio rol. Usa transferencia de ownership.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Only owner or super_admin can assign owner role
+        if role == 'owner' and requester.role not in ['owner', 'super_admin']:
+            return Response({'error': 'Solo un owner o super admin puede asignar el rol de owner.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Managers/admins cannot assign roles above their level
+        if requester.role == 'manager' and role in ['owner', 'super_admin']:
+            return Response({'error': 'No tienes permisos para asignar ese rol.'}, status=status.HTTP_403_FORBIDDEN)
+
+        old_role = target_user.role
+        target_user.role = role
+        target_user.save(update_fields=['role'])
+        logger.info('Role updated for user %s: %s → %s by %s', target_user.email, old_role, role, requester.email)
+        return Response(UserSerializer(target_user).data)
 
     @action(detail=False, methods=['get'])
     def me(self, request):

@@ -16,6 +16,7 @@ export function Navbar() {
   if (!user) return null
 
   const navItems: { label: string; href: string; roles: string[] }[] = [
+    { label: 'Admin', href: '/admin', roles: ['super_admin'] },
     { label: 'Dashboard', href: '/dashboard', roles: ['owner', 'manager', 'admin', 'teacher', 'student', 'corporate_client'] },
     { label: 'Groups', href: '/grupos', roles: ['owner', 'manager', 'admin'] },
     { label: 'Students', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },

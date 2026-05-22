@@ -9,6 +9,15 @@ import { Navbar } from '@/components/Navbar'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
+const ROLE_BADGE: Record<string, string> = {
+  owner:            'bg-red-100 text-red-800',
+  manager:          'bg-blue-100 text-blue-800',
+  admin:            'bg-indigo-100 text-indigo-800',
+  teacher:          'bg-green-100 text-green-800',
+  student:          'bg-purple-100 text-purple-800',
+  corporate_client: 'bg-yellow-100 text-yellow-800',
+}
+
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
   const array = new Uint8Array(12)
@@ -42,14 +51,32 @@ export default function UsuariosPage() {
   const [showNewPassword, setShowNewPassword] = useState(true)
   const [copiedNew, setCopiedNew] = useState(false)
   const [isSavingPassword, setIsSavingPassword] = useState(false)
+
+  // Role change inline
+  const [changingRoleFor, setChangingRoleFor] = useState<string | null>(null)
+  const [pendingRole, setPendingRole] = useState('')
+  const [isSavingRole, setIsSavingRole] = useState(false)
+
+  // Transfer ownership modal
+  const [showTransferModal, setShowTransferModal] = useState(false)
+  const [transferTargetId, setTransferTargetId] = useState('')
+  const [isTransferring, setIsTransferring] = useState(false)
+
   const toast = useToast()
 
   const ROLES = [
+    { value: 'owner', label: 'Owner' },
+    { value: 'manager', label: 'Manager' },
     { value: 'admin', label: 'Admin' },
     { value: 'teacher', label: 'Teacher' },
     { value: 'student', label: 'Student' },
     { value: 'corporate_client', label: 'Corporate Client' },
   ]
+
+  // Roles that the current user is allowed to assign
+  const assignableRoles = user?.role === 'owner'
+    ? ROLES
+    : ROLES.filter((r) => !['owner'].includes(r.value))
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -180,6 +207,43 @@ export default function UsuariosPage() {
     setTimeout(() => setter(false), 2000)
   }
 
+  const startRoleChange = (u: User) => {
+    setChangingRoleFor(u.id)
+    setPendingRole(u.role)
+  }
+
+  const handleSaveRole = async (userId: string) => {
+    setIsSavingRole(true)
+    try {
+      const updated = await apiClient.assignRole(userId, pendingRole)
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: updated.role } : u)))
+      toast.success(`Rol actualizado a "${pendingRole}"`)
+      setChangingRoleFor(null)
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err))
+    } finally {
+      setIsSavingRole(false)
+    }
+  }
+
+  const handleTransferOwnership = async () => {
+    if (!transferTargetId || !user?.organization_slug) return
+    setIsTransferring(true)
+    try {
+      await apiClient.transferOwnership(user.organization_slug, transferTargetId)
+      toast.success('Ownership transferido. Tu rol cambió a Manager.')
+      setShowTransferModal(false)
+      // Refresh user + list
+      await me()
+      const res = await apiClient.getUsers()
+      setUsers(res.results || res)
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err))
+    } finally {
+      setIsTransferring(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -196,17 +260,27 @@ export default function UsuariosPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-              <p className="text-gray-600">Create and manage user accounts</p>
+              <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
+              <p className="text-gray-600">Crea y gestiona cuentas de usuario</p>
             </div>
-            {!editingId && (
-              <button
-                onClick={openCreateForm}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
-              >
-                + New user
-              </button>
-            )}
+            <div className="flex gap-2">
+              {user?.role === 'owner' && !editingId && (
+                <button
+                  onClick={() => setShowTransferModal(true)}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition text-sm"
+                >
+                  Transferir ownership
+                </button>
+              )}
+              {!editingId && (
+                <button
+                  onClick={openCreateForm}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
+                >
+                  + Nuevo usuario
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Create / Edit Form */}
@@ -345,24 +419,58 @@ export default function UsuariosPage() {
                       <h3 className="text-lg font-bold text-gray-900">
                         {u.first_name} {u.last_name}
                       </h3>
-                      <div className="space-y-1 text-sm text-gray-600 mt-2">
+                      <div className="space-y-1.5 text-sm text-gray-600 mt-2">
                         <p>
                           <span className="font-medium">Email:</span> {u.email}
                         </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">Rol:</span>
+                          {changingRoleFor === u.id ? (
+                            <div className="flex items-center gap-1">
+                              <select
+                                value={pendingRole}
+                                onChange={(e) => setPendingRole(e.target.value)}
+                                className="px-2 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                {assignableRoles.map((r) => (
+                                  <option key={r.value} value={r.value}>{r.label}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleSaveRole(u.id)}
+                                disabled={isSavingRole}
+                                className="px-2 py-0.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded text-xs font-medium transition"
+                              >
+                                {isSavingRole ? '...' : 'OK'}
+                              </button>
+                              <button
+                                onClick={() => setChangingRoleFor(null)}
+                                className="px-2 py-0.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-medium transition"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startRoleChange(u)}
+                              disabled={!!editingId}
+                              title="Cambiar rol"
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium transition hover:opacity-80 ${
+                                ROLE_BADGE[u.role] || 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {u.role}
+                            </button>
+                          )}
+                        </div>
                         <p>
-                          <span className="font-medium">Role:</span>{' '}
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {u.role}
-                          </span>
-                        </p>
-                        <p>
-                          <span className="font-medium">Status:</span>{' '}
+                          <span className="font-medium">Estado:</span>{' '}
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {u.is_active ? 'Active' : 'Inactive'}
+                            {u.is_active ? 'Activo' : 'Inactivo'}
                           </span>
                         </p>
                       </div>
@@ -473,6 +581,53 @@ export default function UsuariosPage() {
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Ownership Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Transferir Ownership</h3>
+            <p className="text-sm text-gray-500 mb-1">
+              Tu rol pasará a <strong>Manager</strong>. El usuario seleccionado se convertirá en el nuevo <strong>Owner</strong>.
+            </p>
+            <p className="text-xs text-amber-600 mb-5 font-medium">Esta acción no se puede deshacer fácilmente.</p>
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Seleccionar nuevo owner
+            </label>
+            <select
+              value={transferTargetId}
+              onChange={(e) => setTransferTargetId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-6 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="">-- Elige un usuario --</option>
+              {users
+                .filter((u) => u.id !== user?.id && u.role !== 'super_admin')
+                .map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.first_name} {u.last_name} ({u.email}) — {u.role}
+                  </option>
+                ))}
+            </select>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleTransferOwnership}
+                disabled={isTransferring || !transferTargetId}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg transition"
+              >
+                {isTransferring ? 'Transfiriendo...' : 'Confirmar transferencia'}
+              </button>
+              <button
+                onClick={() => { setShowTransferModal(false); setTransferTargetId('') }}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
+              >
+                Cancelar
               </button>
             </div>
           </div>
