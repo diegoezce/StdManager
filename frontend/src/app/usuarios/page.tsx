@@ -37,13 +37,20 @@ export default function UsuariosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    email: string
+    first_name: string
+    last_name: string
+    role: string
+    password: string
+    corporate_client: string
+  }>({
     email: '',
     first_name: '',
     last_name: '',
-    role: 'student' as const,
+    role: 'student',
     password: '',
-    corporate_client: '' as string,
+    corporate_client: '',
   })
   const [showPassword, setShowPassword] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
