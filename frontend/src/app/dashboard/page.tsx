@@ -118,26 +118,26 @@ export default function DashboardPage() {
           {hasRole(['owner', 'manager', 'admin']) && (
             <>
               <Link href="/grupos">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">📚 Manage Groups</h3>
-                    <p className="text-gray-600 text-sm">Create and manage class groups</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">Manage Groups</h3>
+                    <p className="text-gray-500 text-sm">Create and manage class groups</p>
                   </div>
                 </div>
               </Link>
               <Link href="/estudiantes">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">👥 Manage Students</h3>
-                    <p className="text-gray-600 text-sm">Enroll and manage students</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">Manage Students</h3>
+                    <p className="text-gray-500 text-sm">Enroll and manage students</p>
                   </div>
                 </div>
               </Link>
               <Link href="/asistencia">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">✓ Mark Attendance</h3>
-                    <p className="text-gray-600 text-sm">Record student attendance quickly</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">Mark Attendance</h3>
+                    <p className="text-gray-500 text-sm">Record student attendance quickly</p>
                   </div>
                 </div>
               </Link>
@@ -147,10 +147,10 @@ export default function DashboardPage() {
           {hasRole(['teacher']) && (
             <>
               <Link href="/asistencia">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">✓ Mark Attendance</h3>
-                    <p className="text-gray-600 text-sm">Record student attendance quickly</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">Mark Attendance</h3>
+                    <p className="text-gray-500 text-sm">Record student attendance quickly</p>
                   </div>
                 </div>
               </Link>
@@ -160,18 +160,18 @@ export default function DashboardPage() {
           {hasRole(['student']) && (
             <>
               <Link href="/mis-grupos">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">📖 My Groups</h3>
-                    <p className="text-gray-600 text-sm">View your enrolled groups</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">My Groups</h3>
+                    <p className="text-gray-500 text-sm">View your enrolled groups</p>
                   </div>
                 </div>
               </Link>
               <Link href="/mi-progreso">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">📊 My Progress</h3>
-                    <p className="text-gray-600 text-sm">Check your attendance and grades</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">My Progress</h3>
+                    <p className="text-gray-500 text-sm">Check your attendance and grades</p>
                   </div>
                 </div>
               </Link>
@@ -190,10 +190,10 @@ export default function DashboardPage() {
                 </div>
               </div>
               <Link href="/estudiantes">
-                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                   <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">👥 Ver estudiantes</h3>
-                    <p className="text-gray-600 text-sm">Listado de empleados inscriptos</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">Ver estudiantes</h3>
+                    <p className="text-gray-500 text-sm">Listado de empleados inscriptos</p>
                   </div>
                 </div>
               </Link>
@@ -202,10 +202,10 @@ export default function DashboardPage() {
 
           {hasRole(['owner', 'manager', 'admin', 'corporate_client', 'teacher']) && (
             <Link href="/reportes">
-              <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition">
+              <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg cursor-pointer transition border-t-2 border-indigo-600">
                 <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">📈 Reports</h3>
-                  <p className="text-gray-600 text-sm">View analytics and reports</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">Reports</h3>
+                  <p className="text-gray-500 text-sm">View analytics and reports</p>
                 </div>
               </div>
             </Link>
