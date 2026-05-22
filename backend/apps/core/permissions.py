@@ -13,7 +13,7 @@ class IsOwner(permissions.BasePermission):
 
 class IsOwnerOrManager(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['owner', 'manager']
+        return request.user and request.user.is_authenticated and request.user.role in ['owner', 'manager', 'admin']
 
 
 class IsAdmin(permissions.BasePermission):
