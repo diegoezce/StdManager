@@ -10,6 +10,7 @@ export interface User {
   brand_name: string
   is_active: boolean
   created_at: string
+  corporate_client?: string | null
 }
 
 export interface Organization {
