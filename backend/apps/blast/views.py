@@ -62,6 +62,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         elif user.role == 'student':
             return Student.objects.filter(user=user)
         elif user.role == 'corporate_client':
+            if user.corporate_client_id:
+                return Student.objects.filter(corporate_client_id=user.corporate_client_id)
             return Student.objects.filter(corporate_client__contact_email=user.email)
         return Student.objects.none()
 
@@ -339,7 +341,10 @@ def attendance_report(request):
 
     # Corporate clients only see their own students
     elif request.user.role == 'corporate_client':
-        qs = qs.filter(student__corporate_client__contact_email=request.user.email)
+        if request.user.corporate_client_id:
+            qs = qs.filter(student__corporate_client_id=request.user.corporate_client_id)
+        else:
+            qs = qs.filter(student__corporate_client__contact_email=request.user.email)
 
     # Aggregate per student
     from collections import defaultdict
@@ -404,7 +409,10 @@ def students_report(request):
 
     # Corporate clients only see their own students
     if request.user.role == 'corporate_client':
-        qs = qs.filter(corporate_client__contact_email=request.user.email)
+        if request.user.corporate_client_id:
+            qs = qs.filter(corporate_client_id=request.user.corporate_client_id)
+        else:
+            qs = qs.filter(corporate_client__contact_email=request.user.email)
 
     result = []
     for student in qs:

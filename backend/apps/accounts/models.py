@@ -25,6 +25,14 @@ class CustomUser(AbstractUser):
         default=None
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
+    corporate_client = models.ForeignKey(
+        'blast.CorporateClient',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='user_accounts',
+        default=None,
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
