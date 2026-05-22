@@ -39,7 +39,7 @@ class UserCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'password', 'role', 'organization', 'is_active', 'username')
-        read_only_fields = ('id', 'organization', 'username')
+        read_only_fields = ('id', 'organization')
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
