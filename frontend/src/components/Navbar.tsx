@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
@@ -15,6 +15,12 @@ export function Navbar() {
     logout()
     router.push('/login')
   }
+
+  useEffect(() => {
+    if (user) {
+      document.title = user.brand_name || user.organization_name || 'BLAST'
+    }
+  }, [user?.brand_name, user?.organization_name])
 
   if (!user) return null
 
