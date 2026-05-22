@@ -133,7 +133,7 @@ export default function UsuariosPage() {
       const response = await apiClient.getUsers()
       setUsers(response.results || response)
       setShowForm(false)
-      setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: '' })
+      setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: '', corporate_client: '' })
     } catch (error: any) {
       console.error('Failed to create user:', error)
       toast.error(extractErrorMessage(error))
