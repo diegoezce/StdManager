@@ -57,15 +57,15 @@ export default function EstudiantesPage() {
       try {
         if (!user) return
 
-        const [studentsResponse, groupsResponse, clientsResponse] = await Promise.all([
+        const [studentsResponse, groupsResponse, clientsResult] = await Promise.all([
           apiClient.getStudents(),
           apiClient.getGroups(),
-          apiClient.getCorporateClients(),
+          apiClient.getCorporateClients().catch(() => []),
         ])
 
         setStudents(studentsResponse.results || studentsResponse)
         setGroups(groupsResponse.results || groupsResponse)
-        setCorporateClients(clientsResponse.results || clientsResponse)
+        setCorporateClients(clientsResult.results || clientsResult)
       } catch (error: any) {
         console.error('Failed to load data:', error)
       } finally {
