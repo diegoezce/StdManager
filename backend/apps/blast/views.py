@@ -214,6 +214,23 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, created_by=self.request.user)
 
+    @action(detail=False, methods=['delete'], url_path='delete-day')
+    def delete_day(self, request):
+        """Delete all attendance records for a group on a specific date."""
+        group_id = request.query_params.get('group_id')
+        date = request.query_params.get('date')
+        if not group_id or not date:
+            return Response({'error': 'group_id and date are required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            group = Group.objects.get(id=group_id, organization=request.user.organization)
+        except Group.DoesNotExist:
+            return Response({'error': 'Group not found'}, status=status.HTTP_404_NOT_FOUND)
+        deleted, _ = Attendance.objects.filter(
+            group=group, date=date, organization=request.user.organization
+        ).delete()
+        logger.info('Deleted %d attendance records for group %s on %s by %s', deleted, group_id, date, request.user.email)
+        return Response({'deleted': deleted}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['post'])
     def bulk(self, request):
         serializer = AttendanceBulkSerializer(data=request.data)

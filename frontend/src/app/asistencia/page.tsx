@@ -9,6 +9,7 @@ import { format } from 'date-fns'
 import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { ConfirmModal } from '@/components/ConfirmModal'
 
 export default function AttendancePage() {
   const router = useRouter()
@@ -23,6 +24,8 @@ export default function AttendancePage() {
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [hasExisting, setHasExisting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -124,6 +127,25 @@ export default function AttendancePage() {
     doSave()
   }
 
+  const handleDeleteDay = async () => {
+    if (!selectedGroup) return
+    setIsDeleting(true)
+    try {
+      await apiClient.deleteAttendanceDay(selectedGroup.id, selectedDate)
+      setHasExisting(false)
+      const defaults: { [key: string]: string } = {}
+      enrollments.forEach((e) => { defaults[e.id] = 'present' })
+      setAttendance(defaults)
+      setSaveMessage({ type: 'success', text: '✓ Attendance deleted for this day.' })
+      setTimeout(() => setSaveMessage(null), 4000)
+    } catch {
+      setSaveMessage({ type: 'error', text: 'Failed to delete attendance.' })
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -184,12 +206,20 @@ export default function AttendancePage() {
 
           {/* Existing attendance warning */}
           {hasExisting && (
-            <div className="mb-4 flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
-              <span className="text-lg leading-none">⚠</span>
-              <div>
-                <p className="font-semibold">Attendance already recorded for this date</p>
-                <p className="text-amber-700 mt-0.5">The existing values are loaded below. Saving will overwrite them.</p>
+            <div className="mb-4 flex items-start justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
+              <div className="flex items-start gap-3">
+                <span className="text-lg leading-none shrink-0">⚠</span>
+                <div>
+                  <p className="font-semibold">Attendance already recorded for this date</p>
+                  <p className="text-amber-700 mt-0.5">The existing values are loaded below. Saving will overwrite them.</p>
+                </div>
               </div>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="shrink-0 px-3 py-1.5 rounded-md text-red-600 border border-red-300 bg-white hover:bg-red-50 text-xs font-medium transition"
+              >
+                Delete day
+              </button>
             </div>
           )}
 
@@ -235,6 +265,17 @@ export default function AttendancePage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteDay}
+        title="Eliminar asistencia del día"
+        message={`¿Eliminar todos los registros de asistencia de ${selectedGroup?.name} del ${selectedDate}? Esta acción afecta el cálculo de horas del teacher y no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        confirmClassName="bg-red-600 hover:bg-red-700 text-white"
+        isLoading={isDeleting}
+      />
 
       {/* Confirmation modal */}
       {showConfirm && (

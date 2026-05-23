@@ -161,6 +161,11 @@ class APIClient {
     return response.data
   }
 
+  async deleteAttendanceDay(groupId: string, date: string) {
+    const response = await this.axiosInstance.delete('/attendance/delete-day/', { params: { group_id: groupId, date } })
+    return response.data
+  }
+
   async getTeachersReport(year: number, month: number) {
     const response = await this.axiosInstance.get('/reports/teachers/', { params: { year, month } })
     return response.data
