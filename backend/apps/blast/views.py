@@ -333,6 +333,7 @@ def attendance_report(request):
     qs = Attendance.objects.filter(
         organization=organization,
         date__gte=since,
+        student__is_active=True,
     ).select_related('student__user', 'student__corporate_client', 'group')
 
     # Teachers only see students from their own groups
@@ -394,7 +395,8 @@ def students_report(request):
     ).select_related('group')
 
     qs = Student.objects.filter(
-        organization=organization
+        organization=organization,
+        is_active=True,
     ).select_related(
         'user', 'corporate_client'
     ).prefetch_related(
