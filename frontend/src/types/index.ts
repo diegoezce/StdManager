@@ -70,6 +70,7 @@ export interface Group {
   available_spots: number
   status: 'planning' | 'active' | 'completed' | 'cancelled'
   description: string
+  enrollments: Enrollment[]
   created_at: string
 }
 

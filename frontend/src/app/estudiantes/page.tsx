@@ -113,6 +113,7 @@ export default function EstudiantesPage() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
+        english_level: formData.english_level,
         corporate_client: formData.corporate_client || null,
       })
 
@@ -154,9 +155,14 @@ export default function EstudiantesPage() {
   const handleEnrollStudent = async (studentId: string, groupId: string) => {
     try {
       await apiClient.enrollStudent(groupId, studentId)
-      const response = await apiClient.getStudents()
-      setStudents(response.results || response)
+      const [studentsRes, groupsRes] = await Promise.all([
+        apiClient.getStudents(),
+        apiClient.getGroups(),
+      ])
+      setStudents(studentsRes.results || studentsRes)
+      setGroups(groupsRes.results || groupsRes)
       setSelectedStudentForEnroll(null)
+      toast.success('Estudiante inscripto')
     } catch (error: any) {
       console.error('Failed to enroll student:', error)
       toast.error(extractErrorMessage(error))
@@ -244,23 +250,21 @@ export default function EstudiantesPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                {!editingId && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nivel de inglés</label>
-                    <select
-                      value={formData.english_level}
-                      onChange={(e) => setFormData({ ...formData, english_level: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="beginner">A1 – Beginner</option>
-                      <option value="elementary">A2 – Elementary</option>
-                      <option value="pre-intermediate">B1 – Pre-Intermediate</option>
-                      <option value="intermediate">B1+ – Intermediate</option>
-                      <option value="upper-intermediate">B2 – Upper Intermediate</option>
-                      <option value="advanced">C1 – Advanced</option>
-                    </select>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nivel de inglés</label>
+                  <select
+                    value={formData.english_level}
+                    onChange={(e) => setFormData({ ...formData, english_level: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="beginner">A1 – Beginner</option>
+                    <option value="elementary">A2 – Elementary</option>
+                    <option value="pre-intermediate">B1 – Pre-Intermediate</option>
+                    <option value="intermediate">B1+ – Intermediate</option>
+                    <option value="upper-intermediate">B2 – Upper Intermediate</option>
+                    <option value="advanced">C1 – Advanced</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
                   <select

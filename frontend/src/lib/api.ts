@@ -90,6 +90,13 @@ class APIClient {
     return response.data
   }
 
+  async unenrollStudent(groupId: string, studentId: string) {
+    const response = await this.axiosInstance.delete(`/groups/${groupId}/unenroll/`, {
+      data: { student_id: studentId },
+    })
+    return response.data
+  }
+
   async getStudents() {
     const response = await this.axiosInstance.get('/students/')
     return response.data

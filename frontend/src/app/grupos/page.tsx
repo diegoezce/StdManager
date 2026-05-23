@@ -28,6 +28,7 @@ export default function GruposPage() {
     start_date: '',
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [unenrolling, setUnenrolling] = useState<string | null>(null)
   const toast = useToast()
 
   useEffect(() => {
@@ -99,6 +100,15 @@ export default function GruposPage() {
   const handleEditGroup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingId) return
+
+    const currentGroup = groups.find((g) => g.id === editingId)
+    if (currentGroup && formData.max_students < currentGroup.enrollment_count) {
+      const ok = confirm(
+        `El grupo tiene ${currentGroup.enrollment_count} estudiantes inscriptos pero estás bajando la capacidad a ${formData.max_students}. Los inscriptos existentes no se eliminarán, pero no podrán enrollarse nuevos hasta que haya lugar. ¿Continuar?`
+      )
+      if (!ok) return
+    }
+
     setIsSaving(true)
 
     try {
@@ -146,6 +156,21 @@ export default function GruposPage() {
       description: '',
       start_date: '',
     })
+  }
+
+  const handleUnenroll = async (groupId: string, studentId: string, studentName: string) => {
+    if (!confirm(`¿Sacar a ${studentName} del grupo?`)) return
+    setUnenrolling(studentId)
+    try {
+      await apiClient.unenrollStudent(groupId, studentId)
+      const response = await apiClient.getGroups()
+      setGroups(response.results || response)
+      toast.success(`${studentName} removido del grupo`)
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error))
+    } finally {
+      setUnenrolling(null)
+    }
   }
 
   const handleDeleteGroup = async (id: string) => {
@@ -315,58 +340,71 @@ export default function GruposPage() {
           {/* Groups List */}
           {groups.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {groups.map((group) => (
+              {[...groups].sort((a, b) => a.name.localeCompare(b.name)).map((group) => (
                 <div
                   key={group.id}
-                  className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
+                  className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition border-t-2 border-indigo-600"
                 >
-                  <div className="mb-4">
-                    <h2 className="text-lg font-bold text-gray-900">{group.name}</h2>
-                    <p className="text-sm text-gray-600 mt-1">{group.description}</p>
-                  </div>
-                  <div className="space-y-2 text-sm text-gray-600 mb-4">
-                    <p>
-                      <span className="font-medium">Level:</span> {group.level}
-                    </p>
-                    <p>
-                      <span className="font-medium">Teacher:</span> {group.teacher_name}
-                    </p>
-                    <p>
-                      <span className="font-medium">Students:</span> {group.enrollment_count}/
-                      {group.max_students}
-                    </p>
-                    <p>
-                      <span className="font-medium">Status:</span>{' '}
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          group.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {group.status}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="border-t pt-4">
-                    <p className="text-2xl font-bold text-blue-600 mb-4">
-                      {group.available_spots}
-                    </p>
-                    <p className="text-xs text-gray-600 mb-4">spots available</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => startEditing(group)}
-                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
-                      >
-                        ✎ Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGroup(group.id)}
-                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
-                      >
-                        🗑 Delete
-                      </button>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">{group.name}</h2>
+                      {group.description && <p className="text-sm text-gray-500 mt-0.5">{group.description}</p>}
                     </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      group.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {group.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-sm text-gray-600 mb-4">
+                    <p><span className="font-medium">Nivel:</span> {group.level}</p>
+                    <p><span className="font-medium">Profesor:</span> {group.teacher_name}</p>
+                    <p>
+                      <span className="font-medium">Inscriptos:</span>{' '}
+                      <span className={group.enrollment_count >= group.max_students ? 'text-red-600 font-semibold' : ''}>
+                        {group.enrollment_count}/{group.max_students}
+                      </span>
+                      {group.available_spots > 0 && (
+                        <span className="ml-2 text-xs text-gray-400">({group.available_spots} disponibles)</span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Enrolled students */}
+                  {group.enrollments && group.enrollments.length > 0 && (
+                    <div className="border-t pt-3 mb-4">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Alumnos</p>
+                      <ul className="space-y-1">
+                        {group.enrollments.map((enrollment: any) => (
+                          <li key={enrollment.id} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-700">{enrollment.student_name}</span>
+                            <button
+                              onClick={() => handleUnenroll(group.id, enrollment.student, enrollment.student_name)}
+                              disabled={unenrolling === enrollment.student}
+                              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 transition ml-2 shrink-0"
+                            >
+                              {unenrolling === enrollment.student ? '...' : 'Sacar'}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 border-t pt-3">
+                    <button
+                      onClick={() => startEditing(group)}
+                      className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGroup(group.id)}
+                      className="px-4 py-2 bg-white border border-red-300 hover:bg-red-50 text-red-600 rounded-md text-sm font-medium transition"
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </div>
               ))}
