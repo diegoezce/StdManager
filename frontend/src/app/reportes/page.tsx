@@ -1258,6 +1258,7 @@ function MondlyCorporateDashboard({ rows }: { rows: MondlyRow[] }) {
 function MondlyReport() {
   const { user } = useAuth()
   const isCorporate = user?.role === 'corporate_client'
+  const showDashboard = isCorporate || user?.role === 'owner' || user?.role === 'manager'
   const canImport = user?.role && ['owner', 'manager', 'admin'].includes(user.role)
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -1334,9 +1335,9 @@ function MondlyReport() {
         </div>
       ) : (
         <>
-          {isCorporate && <MondlyCorporateDashboard rows={rows} />}
-          <div className={isCorporate ? 'mt-6' : ''}>
-            {isCorporate && <h3 className="text-sm font-semibold text-gray-700 mb-3">Full team breakdown</h3>}
+          {showDashboard && <MondlyCorporateDashboard rows={rows} />}
+          <div className={showDashboard ? 'mt-6' : ''}>
+            {showDashboard && <h3 className="text-sm font-semibold text-gray-700 mb-3">Full team breakdown</h3>}
             <MondlyTable rows={rows} isCorporate={isCorporate} />
           </div>
         </>
