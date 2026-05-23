@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios'
+import type { MondlyEntry } from '@/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
@@ -164,6 +165,20 @@ class APIClient {
   async deleteAttendanceDay(groupId: string, date: string) {
     const response = await this.axiosInstance.delete('/attendance/delete-day/', { params: { group_id: groupId, date } })
     return response.data
+  }
+
+  async mondlyImport(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await this.axiosInstance.post('/mondly/import/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  }
+
+  async getMondlyData() {
+    const response = await this.axiosInstance.get('/mondly/data/')
+    return response.data as Record<string, MondlyEntry[]>
   }
 
   async getTeachersReport(year: number, month: number) {

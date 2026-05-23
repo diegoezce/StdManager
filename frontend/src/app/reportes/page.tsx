@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
+import type { MondlyEntry } from '@/types'
 import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -79,7 +80,21 @@ function FilterPills<T extends string>({
 
 // ── Student profile drawer ────────────────────────────────────────────────────
 
-function StudentDrawer({ student, onClose }: { student: StudentRow | null; onClose: () => void }) {
+function MondlyBadge({ entries }: { entries: MondlyEntry[] }) {
+  const primary = entries.find((e) => e.language === 'English') ?? entries[0]
+  if (!primary) return null
+  const hours = Math.round(primary.learning_minutes / 60)
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+        Mondly Lv.{primary.level}
+      </span>
+      <span className="text-xs text-gray-500">{primary.points} pts · {hours}h · {primary.best_streak}🔥</span>
+    </div>
+  )
+}
+
+function StudentDrawer({ student, onClose, mondlyData }: { student: StudentRow | null; onClose: () => void; mondlyData: Record<string, MondlyEntry[]> }) {
   const isOpen = !!student
 
   // close on Escape
@@ -171,6 +186,38 @@ function StudentDrawer({ student, onClose }: { student: StudentRow | null; onClo
                     <p className="text-sm text-gray-400">No attendance records</p>
                   )}
                 </div>
+
+                {/* Mondly */}
+                {(() => {
+                  const entries = mondlyData[student.email?.toLowerCase() ?? ''] ?? []
+                  if (entries.length === 0) return null
+                  return (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Mondly performance</p>
+                      <div className="space-y-3">
+                        {entries.map((e) => (
+                          <div key={e.language} className="border border-gray-100 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide">{e.language}</span>
+                              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">Level {e.level}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
+                              <span>Points: <strong>{e.points}</strong></span>
+                              <span>Streak: <strong>{e.best_streak} days</strong></span>
+                              <span>Time: <strong>{Math.round(e.learning_minutes / 60)}h {e.learning_minutes % 60}m</strong></span>
+                              <span>Lessons: <strong>{e.lessons_completed}</strong></span>
+                              <span>Words: <strong>{e.words_learned}</strong></span>
+                              <span>Phrases: <strong>{e.phrases_learned}</strong></span>
+                            </div>
+                            {e.last_active_on && (
+                              <p className="text-xs text-gray-400 mt-2">Last active: {new Date(e.last_active_on).toLocaleDateString()}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </>
@@ -218,10 +265,15 @@ function StudentsReport() {
   const [sortKey, setSortKey] = useState<'full_name' | 'company' | 'english_level' | 'attendance_rate'>('full_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [drawerStudent, setDrawerStudent] = useState<StudentRow | null>(null)
+  const [mondlyData, setMondlyData] = useState<Record<string, MondlyEntry[]>>({})
 
   useEffect(() => {
-    apiClient.getStudentsReport().then((data) => {
-      setStudents(data)
+    Promise.all([
+      apiClient.getStudentsReport(),
+      apiClient.getMondlyData().catch(() => ({})),
+    ]).then(([students, mondly]) => {
+      setStudents(students)
+      setMondlyData(mondly)
       setIsLoading(false)
     }).catch(() => setIsLoading(false))
   }, [])
@@ -321,6 +373,9 @@ function StudentsReport() {
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900 text-sm">{s.full_name}</p>
                     <p className="text-xs text-gray-400">{s.email}</p>
+                    {mondlyData[s.email?.toLowerCase() ?? ''] && (
+                      <div className="mt-1"><MondlyBadge entries={mondlyData[s.email?.toLowerCase() ?? ''] ?? []} /></div>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{s.company ?? <span className="text-gray-300">—</span>}</td>
                   <td className="px-6 py-4">
@@ -351,7 +406,7 @@ function StudentsReport() {
         </div>
       </div>
 
-      <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} />
+      <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} mondlyData={mondlyData} />
     </>
   )
 }
@@ -643,10 +698,15 @@ function LevelsReport() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
   const [drawerStudent, setDrawerStudent] = useState<StudentRow | null>(null)
+  const [mondlyData, setMondlyData] = useState<Record<string, MondlyEntry[]>>({})
 
   useEffect(() => {
-    apiClient.getStudentsReport().then((data) => {
+    Promise.all([
+      apiClient.getStudentsReport(),
+      apiClient.getMondlyData().catch(() => ({})),
+    ]).then(([data, mondly]) => {
       setStudents(data.filter((s: StudentRow) => s.is_active))
+      setMondlyData(mondly)
       setIsLoading(false)
     }).catch(() => setIsLoading(false))
   }, [])
@@ -756,7 +816,7 @@ function LevelsReport() {
         ))}
       </div>
 
-      <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} />
+      <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} mondlyData={mondlyData} />
     </>
   )
 }
@@ -963,9 +1023,170 @@ function TeachersReport() {
   )
 }
 
+// ── Mondly report ─────────────────────────────────────────────────────────────
+
+type MondlyRow = { email: string; name: string; entries: MondlyEntry[] }
+
+function MondlyReport() {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ imported: number; matched: number; unmatched: number; skipped: number } | null>(null)
+  const [importError, setImportError] = useState('')
+  const [rows, setRows] = useState<MondlyRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+
+  const load = () => {
+    apiClient.getMondlyData().then((data) => {
+      const list: MondlyRow[] = Object.entries(data).map(([email, entries]) => ({
+        email,
+        name: entries[0] ? (entries[0] as any).name ?? email : email,
+        entries,
+      })).sort((a, b) => a.email.localeCompare(b.email))
+      setRows(list)
+      setIsLoading(false)
+    }).catch(() => setIsLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    setImportError('')
+    setImportResult(null)
+    try {
+      const result = await apiClient.mondlyImport(file)
+      setImportResult(result)
+      load()
+    } catch (err: any) {
+      setImportError(err?.response?.data?.error ?? 'Import failed')
+    } finally {
+      setImporting(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return q ? rows.filter((r) => r.email.includes(q) || r.name.toLowerCase().includes(q)) : rows
+  }, [rows, search])
+
+  const primary = (entries: MondlyEntry[]) =>
+    entries.find((e) => e.language === 'English' || e.language === 'American English') ?? entries[0]
+
+  return (
+    <>
+      {/* Upload card */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800">Import Mondly report</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Upload the Excel or CSV export from Mondly. The file is parsed in memory — not stored.</p>
+          </div>
+          <label className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition ${importing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            {importing ? 'Importing...' : 'Upload file'}
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} disabled={importing} />
+          </label>
+        </div>
+
+        {importResult && (
+          <div className="mt-4 flex flex-wrap gap-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+            <span className="text-green-700 font-medium">Import complete</span>
+            <span className="text-gray-600">{importResult.imported} records imported</span>
+            <span className="text-green-600">{importResult.matched} matched to students</span>
+            {importResult.unmatched > 0 && <span className="text-amber-600">{importResult.unmatched} unmatched (no BLEST student with that email)</span>}
+            {importResult.skipped > 0 && <span className="text-gray-400">{importResult.skipped} skipped</span>}
+          </div>
+        )}
+        {importError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{importError}</div>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
+      ) : rows.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-400 text-sm">
+          No Mondly data yet. Upload a report to get started.
+        </div>
+      ) : (
+        <>
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-72 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Level</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Points</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Streak</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lessons</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Words</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last active</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filtered.map((r) => {
+                    const p = primary(r.entries)
+                    if (!p) return null
+                    const hours = Math.floor(p.learning_minutes / 60)
+                    const mins = p.learning_minutes % 60
+                    return (
+                      <tr key={r.email} className="hover:bg-gray-50 transition">
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-medium text-gray-900">{r.name || r.email}</p>
+                          <p className="text-xs text-gray-400">{r.email}</p>
+                          {r.entries.length > 1 && (
+                            <div className="flex gap-1 mt-1">
+                              {r.entries.map((e) => (
+                                <span key={e.language} className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-xs">{e.language}</span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-block px-2.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">{p.level}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.points.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.best_streak}d</td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-700">{hours}h{mins > 0 ? ` ${mins}m` : ''}</td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.lessons_completed}</td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.words_learned}</td>
+                        <td className="px-6 py-4 text-xs text-gray-500">
+                          {p.last_active_on ? new Date(p.last_active_on).toLocaleDateString() : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
+              {filtered.length} student{filtered.length !== 1 ? 's' : ''} with Mondly data
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers'
+type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers' | 'mondly'
 
 const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: boolean }[] = [
   { value: 'students', label: 'Students', teacherHidden: true },
@@ -973,6 +1194,7 @@ const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: bo
   { value: 'groups', label: 'Groups', teacherHidden: true },
   { value: 'levels', label: 'Levels', teacherHidden: true },
   { value: 'teachers', label: 'Teachers', teacherHidden: true, ownerOnly: true },
+  { value: 'mondly', label: 'Mondly', teacherHidden: true, ownerOnly: true },
 ]
 
 export default function ReportesPage() {
@@ -1041,6 +1263,7 @@ export default function ReportesPage() {
           {activeTab === 'groups' && <GroupsReport />}
           {activeTab === 'levels' && <LevelsReport />}
           {activeTab === 'teachers' && <TeachersReport />}
+          {activeTab === 'mondly' && <MondlyReport />}
         </div>
       </div>
 

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 from .models import (
     CorporateClient, Teacher, Student, Group, Enrollment,
-    Attendance, Evaluation, Certificate
+    Attendance, Evaluation, Certificate, MondlyRecord
 )
 from .serializers import (
     CorporateClientSerializer, TeacherSerializer, StudentSerializer,
@@ -554,4 +554,174 @@ def teachers_report(request):
         })
 
     result.sort(key=lambda r: r['full_name'])
+    return Response(result)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mondly_import(request):
+    """Parse a Mondly Excel or CSV export and upsert records. File is not stored."""
+    if request.user.role not in ('owner', 'manager', 'admin', 'super_admin'):
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied()
+
+    uploaded = request.FILES.get('file')
+    if not uploaded:
+        return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    filename = uploaded.name.lower()
+    rows = []
+
+    try:
+        if filename.endswith('.xlsx') or filename.endswith('.xls'):
+            import openpyxl
+            wb = openpyxl.load_workbook(uploaded, read_only=True, data_only=True)
+            ws = wb.active
+            headers = None
+            for row in ws.iter_rows(values_only=True):
+                if headers is None:
+                    # Skip empty leading rows
+                    if any(row):
+                        headers = [str(c).strip() if c else '' for c in row]
+                    continue
+                rows.append(dict(zip(headers, row)))
+        elif filename.endswith('.csv'):
+            import csv, io
+            content = uploaded.read().decode('utf-8-sig', errors='replace')
+            # Auto-detect delimiter
+            sample = content[:2048]
+            dialect = csv.Sniffer().sniff(sample, delimiters=';,\t')
+            reader = csv.DictReader(io.StringIO(content), dialect=dialect)
+            rows = list(reader)
+        else:
+            return Response({'error': 'Unsupported format. Use .xlsx or .csv'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error('Mondly file parse error: %s', e, exc_info=True)
+        return Response({'error': f'Could not parse file: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    organization = request.user.organization
+
+    # Build email → student map for this org
+    student_by_email = {
+        s.user.email.lower(): s
+        for s in Student.objects.filter(organization=organization).select_related('user')
+    }
+
+    COL = {
+        'user_id': ['UserID', 'User ID'],
+        'name': ['Name'],
+        'email': ['Email'],
+        'language': ['Language'],
+        'level': ['Level'],
+        'points': ['Points'],
+        'best_streak': ['Best Streak'],
+        'learning_minutes': ['Learning Time (minutes)', 'Learning Time'],
+        'lessons_completed': ['Lessons completed', 'Lessons Completed'],
+        'words_learned': ['Words learned', 'Words Learned'],
+        'phrases_learned': ['Phrases learned', 'Phrases Learned'],
+        'last_active_on': ['Last active on', 'Last Active On'],
+        'team': ['Team'],
+    }
+
+    def get_col(row, candidates):
+        for c in candidates:
+            if c in row and row[c] not in (None, ''):
+                return row[c]
+        return None
+
+    def safe_int(v, default=0):
+        try:
+            return int(float(str(v))) if v not in (None, '') else default
+        except (ValueError, TypeError):
+            return default
+
+    def parse_dt(v):
+        if not v:
+            return None
+        if hasattr(v, 'isoformat'):
+            return timezone.make_aware(v) if timezone.is_naive(v) else v
+        try:
+            from dateutil.parser import parse as dateparse
+            return dateparse(str(v))
+        except Exception:
+            return None
+
+    imported = skipped = matched = 0
+
+    for row in rows:
+        email_raw = get_col(row, COL['email'])
+        if not email_raw:
+            skipped += 1
+            continue
+        email = str(email_raw).strip().lower()
+        if not email or '@' not in email:
+            skipped += 1
+            continue
+
+        language = str(get_col(row, COL['language']) or 'English').strip()
+
+        student = student_by_email.get(email)
+
+        defaults = {
+            'student': student,
+            'mondly_user_id': str(get_col(row, COL['user_id']) or ''),
+            'name': str(get_col(row, COL['name']) or '').strip(),
+            'level': safe_int(get_col(row, COL['level']), 1),
+            'points': safe_int(get_col(row, COL['points'])),
+            'best_streak': safe_int(get_col(row, COL['best_streak'])),
+            'learning_minutes': safe_int(get_col(row, COL['learning_minutes'])),
+            'lessons_completed': safe_int(get_col(row, COL['lessons_completed'])),
+            'words_learned': safe_int(get_col(row, COL['words_learned'])),
+            'phrases_learned': safe_int(get_col(row, COL['phrases_learned'])),
+            'last_active_on': parse_dt(get_col(row, COL['last_active_on'])),
+            'mondly_team': str(get_col(row, COL['team']) or '').strip(),
+            'imported_by': request.user,
+        }
+
+        MondlyRecord.objects.update_or_create(
+            organization=organization,
+            email=email,
+            language=language,
+            defaults=defaults,
+        )
+        imported += 1
+        if student:
+            matched += 1
+
+    logger.info('Mondly import: %d rows, %d imported, %d matched, %d skipped by %s',
+                len(rows), imported, matched, skipped, request.user.email)
+
+    return Response({
+        'imported': imported,
+        'matched': matched,
+        'unmatched': imported - matched,
+        'skipped': skipped,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mondly_data(request):
+    """Return latest Mondly records for the org, keyed by email."""
+    organization = request.user.organization
+    records = MondlyRecord.objects.filter(organization=organization).order_by('email', 'language')
+
+    result = {}
+    for r in records:
+        if r.email not in result:
+            result[r.email] = []
+        result[r.email].append({
+            'language': r.language,
+            'level': r.level,
+            'points': r.points,
+            'best_streak': r.best_streak,
+            'learning_minutes': r.learning_minutes,
+            'lessons_completed': r.lessons_completed,
+            'words_learned': r.words_learned,
+            'phrases_learned': r.phrases_learned,
+            'last_active_on': r.last_active_on.isoformat() if r.last_active_on else None,
+            'mondly_team': r.mondly_team,
+            'imported_at': r.imported_at.isoformat(),
+        })
+
     return Response(result)

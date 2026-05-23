@@ -287,3 +287,44 @@ class Certificate(OrganizationMixin, BaseModel):
 
     def __str__(self):
         return f"Certificate {self.certificate_number} - {self.student}"
+
+
+class MondlyRecord(OrganizationMixin, BaseModel):
+    """Parsed Mondly performance data, matched to a student by email."""
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='mondly_records',
+    )
+    mondly_user_id = models.CharField(max_length=50, blank=True)
+    email = models.EmailField()
+    name = models.CharField(max_length=255, blank=True)
+    language = models.CharField(max_length=100, default='English')
+    level = models.PositiveSmallIntegerField(default=1)
+    points = models.PositiveIntegerField(default=0)
+    best_streak = models.PositiveIntegerField(default=0)
+    learning_minutes = models.PositiveIntegerField(default=0)
+    lessons_completed = models.PositiveIntegerField(default=0)
+    words_learned = models.PositiveIntegerField(default=0)
+    phrases_learned = models.PositiveIntegerField(default=0)
+    last_active_on = models.DateTimeField(null=True, blank=True)
+    mondly_team = models.CharField(max_length=255, blank=True)
+    imported_at = models.DateTimeField(auto_now=True)
+    imported_by = models.ForeignKey(
+        'accounts.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='mondly_imports',
+    )
+
+    class Meta:
+        unique_together = ('organization', 'email', 'language')
+        ordering = ['-imported_at']
+        indexes = [
+            models.Index(fields=['organization', 'email']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.language}) - Level {self.level}"

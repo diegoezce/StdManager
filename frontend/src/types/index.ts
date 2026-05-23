@@ -113,6 +113,20 @@ export interface Evaluation {
   created_at: string
 }
 
+export interface MondlyEntry {
+  language: string
+  level: number
+  points: number
+  best_streak: number
+  learning_minutes: number
+  lessons_completed: number
+  words_learned: number
+  phrases_learned: number
+  last_active_on: string | null
+  mondly_team: string
+  imported_at: string
+}
+
 export interface Certificate {
   id: string
   student: string
