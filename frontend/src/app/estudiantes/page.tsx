@@ -36,6 +36,7 @@ export default function EstudiantesPage() {
     corporate_client: null,
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [search, setSearch] = useState('')
   const toast = useToast()
 
   useEffect(() => {
@@ -162,6 +163,17 @@ export default function EstudiantesPage() {
     }
   }
 
+  const filteredStudents = students
+    .filter((s) => {
+      const q = search.toLowerCase()
+      return (
+        s.user_name?.toLowerCase().includes(q) ||
+        s.user_email?.toLowerCase().includes(q) ||
+        s.corporate_client_name?.toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => (a.user_name || '').localeCompare(b.user_name || ''))
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -284,10 +296,21 @@ export default function EstudiantesPage() {
             </form>
           </Modal>
 
+          {/* Search */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Buscar por nombre, email o empresa..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
           {/* Students List */}
-          {students.length > 0 ? (
+          {filteredStudents.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {students.map((student) => (
+              {filteredStudents.map((student) => (
                 <div key={student.id} className="bg-white rounded-lg shadow p-6">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -373,8 +396,14 @@ export default function EstudiantesPage() {
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-              <p className="text-lg mb-2">No students yet</p>
-              <p className="text-sm">Create a new student to get started</p>
+              {search ? (
+                <p className="text-lg">No hay estudiantes que coincidan con "{search}"</p>
+              ) : (
+                <>
+                  <p className="text-lg mb-2">No students yet</p>
+                  <p className="text-sm">Create a new student to get started</p>
+                </>
+              )}
             </div>
           )}
         </div>
