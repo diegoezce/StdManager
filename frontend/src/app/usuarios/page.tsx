@@ -34,6 +34,7 @@ export default function UsuariosPage() {
   const { user, me } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [corporateClients, setCorporateClients] = useState<any[]>([])
+  const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -245,6 +246,28 @@ export default function UsuariosPage() {
     }
   }
 
+  const handleToggleActive = async (u: User) => {
+    try {
+      await apiClient.updateUser(u.id, { is_active: !u.is_active })
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_active: !x.is_active } : x)))
+      toast.success(u.is_active ? 'Usuario desactivado' : 'Usuario activado')
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error))
+    }
+  }
+
+  const filteredUsers = users
+    .filter((u) => {
+      const q = search.toLowerCase()
+      return (
+        u.first_name?.toLowerCase().includes(q) ||
+        u.last_name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.role?.toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`))
+
   const handleTransferOwnership = async () => {
     if (!transferTargetId || !user?.organization_slug) return
     setIsTransferring(true)
@@ -415,10 +438,21 @@ export default function UsuariosPage() {
             </form>
           </Modal>
 
+          {/* Search */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Buscar por nombre, email o rol..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
           {/* Users List */}
-          {users.length > 0 ? (
+          {filteredUsers.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <div
                   key={u.id}
                   className="bg-white rounded-lg shadow p-6 transition"
@@ -502,7 +536,7 @@ export default function UsuariosPage() {
                         <>
                           <button
                             onClick={() => startEditing(u)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
                           >
                             Edit
                           </button>
@@ -513,8 +547,18 @@ export default function UsuariosPage() {
                             Password
                           </button>
                           <button
+                            onClick={() => handleToggleActive(u)}
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition border ${
+                              u.is_active
+                                ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                                : 'border-green-300 text-green-700 hover:bg-green-50'
+                            }`}
+                          >
+                            {u.is_active ? 'Desactivar' : 'Activar'}
+                          </button>
+                          <button
                             onClick={() => handleDeleteUser(u.id)}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+                            className="px-3 py-1.5 bg-white border border-red-300 hover:bg-red-50 text-red-600 rounded-md text-sm font-medium transition"
                           >
                             Delete
                           </button>
@@ -527,8 +571,14 @@ export default function UsuariosPage() {
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-              <p className="text-lg mb-2">No users yet</p>
-              <p className="text-sm">Create the first one with the button above</p>
+              {search ? (
+                <p className="text-lg">No hay usuarios que coincidan con "{search}"</p>
+              ) : (
+                <>
+                  <p className="text-lg mb-2">No users yet</p>
+                  <p className="text-sm">Create the first one with the button above</p>
+                </>
+              )}
             </div>
           )}
         </div>

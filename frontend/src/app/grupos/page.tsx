@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
+import { ConfirmModal } from '@/components/ConfirmModal'
 
 export default function GruposPage() {
   const router = useRouter()
@@ -29,7 +30,19 @@ export default function GruposPage() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [unenrolling, setUnenrolling] = useState<string | null>(null)
+  const [confirmUnenroll, setConfirmUnenroll] = useState<{ groupId: string; studentId: string; studentName: string } | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const toast = useToast()
+
+  const COLLAPSED_LIMIT = 4
+
+  const toggleExpand = (groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      next.has(groupId) ? next.delete(groupId) : next.add(groupId)
+      return next
+    })
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -158,8 +171,9 @@ export default function GruposPage() {
     })
   }
 
-  const handleUnenroll = async (groupId: string, studentId: string, studentName: string) => {
-    if (!confirm(`¿Sacar a ${studentName} del grupo?`)) return
+  const handleUnenroll = async () => {
+    if (!confirmUnenroll) return
+    const { groupId, studentId, studentName } = confirmUnenroll
     setUnenrolling(studentId)
     try {
       await apiClient.unenrollStudent(groupId, studentId)
@@ -170,6 +184,7 @@ export default function GruposPage() {
       toast.error(extractErrorMessage(error))
     } finally {
       setUnenrolling(null)
+      setConfirmUnenroll(null)
     }
   }
 
@@ -376,19 +391,32 @@ export default function GruposPage() {
                     <div className="border-t pt-3 mb-4">
                       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Alumnos</p>
                       <ul className="space-y-1">
-                        {group.enrollments.map((enrollment: any) => (
+                        {(expandedGroups.has(group.id)
+                          ? group.enrollments
+                          : group.enrollments.slice(0, COLLAPSED_LIMIT)
+                        ).map((enrollment: any) => (
                           <li key={enrollment.id} className="flex items-center justify-between text-sm">
                             <span className="text-gray-700">{enrollment.student_name}</span>
                             <button
-                              onClick={() => handleUnenroll(group.id, enrollment.student, enrollment.student_name)}
+                              onClick={() => setConfirmUnenroll({ groupId: group.id, studentId: enrollment.student, studentName: enrollment.student_name })}
                               disabled={unenrolling === enrollment.student}
                               className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 transition ml-2 shrink-0"
                             >
-                              {unenrolling === enrollment.student ? '...' : 'Sacar'}
+                              {unenrolling === enrollment.student ? '...' : 'Remove'}
                             </button>
                           </li>
                         ))}
                       </ul>
+                      {group.enrollments.length > COLLAPSED_LIMIT && (
+                        <button
+                          onClick={() => toggleExpand(group.id)}
+                          className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+                        >
+                          {expandedGroups.has(group.id)
+                            ? 'Ver menos'
+                            : `Ver todos (${group.enrollments.length})`}
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -417,6 +445,16 @@ export default function GruposPage() {
           )}
         </div>
       </div>
+      <ConfirmModal
+        isOpen={!!confirmUnenroll}
+        onClose={() => setConfirmUnenroll(null)}
+        onConfirm={handleUnenroll}
+        title="Remover alumno"
+        message={`¿Remover a ${confirmUnenroll?.studentName} del grupo? Se marcará como baja.`}
+        confirmLabel="Remover"
+        isLoading={!!unenrolling}
+      />
+
       <ToastContainer toasts={toast.toasts} dismiss={toast.dismiss} />
     </ProtectedRoute>
   )

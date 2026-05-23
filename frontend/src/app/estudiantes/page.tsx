@@ -169,6 +169,18 @@ export default function EstudiantesPage() {
     }
   }
 
+  const handleToggleActive = async (student: Student) => {
+    try {
+      await apiClient.updateStudent(student.id, { is_active: !student.is_active })
+      setStudents((prev) =>
+        prev.map((s) => (s.id === student.id ? { ...s, is_active: !s.is_active } : s))
+      )
+      toast.success(student.is_active ? 'Alumno desactivado' : 'Alumno activado')
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error))
+    }
+  }
+
   const filteredStudents = students
     .filter((s) => {
       const q = search.toLowerCase()
@@ -381,15 +393,25 @@ export default function EstudiantesPage() {
                         <>
                           <button
                             onClick={() => startEditing(student)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
                           >
-                            ✎ Edit
+                            Edit
                           </button>
                           <button
                             onClick={() => setSelectedStudentForEnroll(student.id)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
                           >
-                            Enroll →
+                            Enroll
+                          </button>
+                          <button
+                            onClick={() => handleToggleActive(student)}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition border ${
+                              student.is_active
+                                ? 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                                : 'border-green-300 text-green-700 hover:bg-green-50'
+                            }`}
+                          >
+                            {student.is_active ? 'Desactivar' : 'Activar'}
                           </button>
                         </>
                       )}
