@@ -574,7 +574,10 @@ def mondly_import(request):
 
     try:
         if filename.endswith('.xlsx') or filename.endswith('.xls'):
-            import openpyxl
+            try:
+                import openpyxl
+            except ImportError:
+                return Response({'error': 'Excel support not available on this server. Please export the Mondly report as CSV and upload that instead.'}, status=status.HTTP_400_BAD_REQUEST)
             wb = openpyxl.load_workbook(uploaded, read_only=True, data_only=True)
             ws = wb.active
             headers = None
