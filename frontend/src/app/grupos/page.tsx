@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
-import { Group, Teacher } from '@/types'
+import { Group, Teacher, Student } from '@/types'
 import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -17,7 +17,13 @@ export default function GruposPage() {
   const { user, me } = useAuth()
   const [groups, setGroups] = useState<Group[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [allStudents, setAllStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  // Enroll modal
+  const [enrollingGroup, setEnrollingGroup] = useState<Group | null>(null)
+  const [enrollSearch, setEnrollSearch] = useState('')
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set())
+  const [isEnrolling, setIsEnrolling] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -63,16 +69,15 @@ export default function GruposPage() {
       try {
         if (!user) return
 
-        const [groupsResponse, teachersResponse] = await Promise.all([
+        const [groupsResponse, teachersResponse, studentsResponse] = await Promise.all([
           apiClient.getGroups(),
           apiClient.getTeachers(),
+          apiClient.getStudents(),
         ])
 
-        const groupsData = groupsResponse.results || groupsResponse
-        const teachersData = teachersResponse.results || teachersResponse
-
-        setGroups(groupsData)
-        setTeachers(teachersData)
+        setGroups(groupsResponse.results || groupsResponse)
+        setTeachers(teachersResponse.results || teachersResponse)
+        setAllStudents((studentsResponse.results || studentsResponse).filter((s: Student) => s.is_active))
       } catch (error: any) {
         console.error('Failed to load data:', error)
       } finally {
@@ -169,6 +174,31 @@ export default function GruposPage() {
       description: '',
       start_date: '',
     })
+  }
+
+  const openEnrollModal = (group: Group) => {
+    setEnrollingGroup(group)
+    setEnrollSearch('')
+    setSelectedStudents(new Set())
+  }
+
+  const handleBulkEnroll = async () => {
+    if (!enrollingGroup || selectedStudents.size === 0) return
+    setIsEnrolling(true)
+    let enrolled = 0
+    for (const studentId of selectedStudents) {
+      try {
+        await apiClient.enrollStudent(enrollingGroup.id, studentId)
+        enrolled++
+      } catch {
+        // already enrolled or other error — skip silently
+      }
+    }
+    const res = await apiClient.getGroups()
+    setGroups(res.results || res)
+    toast.success(`${enrolled} alumno${enrolled !== 1 ? 's' : ''} inscripto${enrolled !== 1 ? 's' : ''}`)
+    setEnrollingGroup(null)
+    setIsEnrolling(false)
   }
 
   const handleUnenroll = async () => {
@@ -422,8 +452,14 @@ export default function GruposPage() {
 
                   <div className="flex gap-2 border-t pt-3">
                     <button
-                      onClick={() => startEditing(group)}
+                      onClick={() => openEnrollModal(group)}
                       className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
+                    >
+                      + Enroll
+                    </button>
+                    <button
+                      onClick={() => startEditing(group)}
+                      className="flex-1 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-md text-sm font-medium transition"
                     >
                       Editar
                     </button>
@@ -445,6 +481,113 @@ export default function GruposPage() {
           )}
         </div>
       </div>
+      {/* Enroll modal */}
+      <Modal
+        isOpen={!!enrollingGroup}
+        onClose={() => setEnrollingGroup(null)}
+        title={`Inscribir en ${enrollingGroup?.name}`}
+      >
+        {enrollingGroup && (() => {
+          const enrolledIds = new Set(enrollingGroup.enrollments?.map((e: any) => e.student) ?? [])
+          const sameLevel = allStudents.filter((s) => s.english_level === enrollingGroup.level && !enrolledIds.has(s.id))
+          const otherLevel = allStudents.filter((s) => s.english_level !== enrollingGroup.level && !enrolledIds.has(s.id))
+          const q = enrollSearch.toLowerCase()
+          const filter = (list: Student[]) => q
+            ? list.filter((s) => s.user_name?.toLowerCase().includes(q) || s.user_email?.toLowerCase().includes(q))
+            : list
+
+          const filteredSame = filter(sameLevel)
+          const filteredOther = filter(otherLevel)
+          const total = filteredSame.length + filteredOther.length
+
+          const toggle = (id: string) => setSelectedStudents((prev) => {
+            const next = new Set(prev)
+            next.has(id) ? next.delete(id) : next.add(id)
+            return next
+          })
+
+          const toggleAll = (list: Student[]) => {
+            const ids = list.map((s) => s.id)
+            const allSelected = ids.every((id) => selectedStudents.has(id))
+            setSelectedStudents((prev) => {
+              const next = new Set(prev)
+              allSelected ? ids.forEach((id) => next.delete(id)) : ids.forEach((id) => next.add(id))
+              return next
+            })
+          }
+
+          const StudentItem = ({ s }: { s: Student }) => (
+            <label key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedStudents.has(s.id)}
+                onChange={() => toggle(s.id)}
+                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{s.user_name}</p>
+                <p className="text-xs text-gray-400 truncate">{s.user_email}</p>
+              </div>
+            </label>
+          )
+
+          return (
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Buscar alumno..."
+                value={enrollSearch}
+                onChange={(e) => setEnrollSearch(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                autoFocus
+              />
+
+              {total === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">
+                  {enrollSearch ? 'Sin resultados' : 'No hay alumnos disponibles para inscribir'}
+                </p>
+              ) : (
+                <div className="max-h-72 overflow-y-auto space-y-1">
+                  {filteredSame.length > 0 && (
+                    <div>
+                      <button onClick={() => toggleAll(filteredSame)} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-indigo-700 uppercase tracking-wide hover:bg-indigo-50 rounded-md transition">
+                        <span className="flex-1 text-left">Mismo nivel ({filteredSame.length})</span>
+                        <span className="text-indigo-400">{filteredSame.every((s) => selectedStudents.has(s.id)) ? 'Deseleccionar todos' : 'Seleccionar todos'}</span>
+                      </button>
+                      {filteredSame.map((s) => <StudentItem key={s.id} s={s} />)}
+                    </div>
+                  )}
+                  {filteredOther.length > 0 && (
+                    <div className={filteredSame.length > 0 ? 'mt-2' : ''}>
+                      {filteredSame.length > 0 && (
+                        <button onClick={() => toggleAll(filteredOther)} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide hover:bg-gray-50 rounded-md transition">
+                          <span className="flex-1 text-left">Otros niveles ({filteredOther.length})</span>
+                          <span className="text-gray-400">{filteredOther.every((s) => selectedStudents.has(s.id)) ? 'Deseleccionar todos' : 'Seleccionar todos'}</span>
+                        </button>
+                      )}
+                      {filteredOther.map((s) => <StudentItem key={s.id} s={s} />)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2 border-t">
+                <button
+                  onClick={handleBulkEnroll}
+                  disabled={isEnrolling || selectedStudents.size === 0}
+                  className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition text-sm"
+                >
+                  {isEnrolling ? 'Inscribiendo...' : `Inscribir ${selectedStudents.size > 0 ? `(${selectedStudents.size})` : ''}`}
+                </button>
+                <button onClick={() => setEnrollingGroup(null)} className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition text-sm">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
       <ConfirmModal
         isOpen={!!confirmUnenroll}
         onClose={() => setConfirmUnenroll(null)}

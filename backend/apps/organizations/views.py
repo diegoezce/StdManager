@@ -71,9 +71,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
 
         return Response({
             'users': organization.users.filter(is_active=True).count(),
-            'students': Student.objects.filter(organization=organization).count(),
+            'students': Student.objects.filter(organization=organization, is_active=True).count(),
             'teachers': Teacher.objects.filter(organization=organization).count(),
-            'groups': Group.objects.filter(organization=organization).count(),
+            'groups': Group.objects.filter(organization=organization, status='active').count(),
         })
 
     @action(detail=True, methods=['patch'], url_path='update-status')

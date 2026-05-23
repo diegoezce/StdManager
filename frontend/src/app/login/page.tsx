@@ -7,7 +7,7 @@ import { BlastLogo } from '@/components/BlastLogo'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, error, isLoading } = useAuth()
+  const { login, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [localError, setLocalError] = useState('')
@@ -24,8 +24,12 @@ export default function LoginPage() {
     try {
       await login(email, password)
       router.push('/dashboard')
-    } catch (err) {
-      setLocalError(error || 'No se pudo iniciar sesión. Verifica tus credenciales.')
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.non_field_errors?.[0] ||
+        'No se pudo iniciar sesión. Verifica tus credenciales.'
+      setLocalError(msg)
     }
   }
 
@@ -79,9 +83,9 @@ export default function LoginPage() {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {(localError || error) && (
+              {localError && (
                 <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2">
-                  <p className="text-sm text-red-800">{localError || error}</p>
+                  <p className="text-sm text-red-800">{localError}</p>
                 </div>
               )}
 
