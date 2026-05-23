@@ -1025,24 +1025,255 @@ function TeachersReport() {
 
 // ── Mondly report ─────────────────────────────────────────────────────────────
 
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts'
+
 type MondlyRow = { email: string; name: string; entries: MondlyEntry[] }
+type MondlySortKey = 'name' | 'level' | 'points' | 'best_streak' | 'learning_minutes' | 'lessons_completed' | 'words_learned' | 'last_active_on'
+
+const primary = (entries: MondlyEntry[]) =>
+  entries.find((e) => e.language === 'English' || e.language === 'American English') ?? entries[0]
+
+const DAYS_INACTIVE = 30
+
+function MondlyTable({ rows, isCorporate }: { rows: MondlyRow[]; isCorporate: boolean }) {
+  const [sortKey, setSortKey] = useState<MondlySortKey>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [search, setSearch] = useState('')
+
+  const toggleSort = (k: MondlySortKey) => {
+    if (sortKey === k) setSortDir((d) => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(k); setSortDir('asc') }
+  }
+  const SortIcon = ({ k }: { k: MondlySortKey }) =>
+    sortKey === k
+      ? <span className="ml-1 text-purple-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
+      : <span className="ml-1 text-gray-300">↕</span>
+
+  const sorted = useMemo(() => {
+    const q = search.toLowerCase()
+    let filtered = q ? rows.filter((r) => r.name.toLowerCase().includes(q) || r.email.includes(q)) : rows
+    return [...filtered].sort((a, b) => {
+      const pa = primary(a.entries)
+      const pb = primary(b.entries)
+      let va: any, vb: any
+      if (sortKey === 'name') { va = a.name.toLowerCase(); vb = b.name.toLowerCase() }
+      else if (sortKey === 'last_active_on') { va = pa?.last_active_on ?? ''; vb = pb?.last_active_on ?? '' }
+      else { va = (pa as any)?.[sortKey] ?? 0; vb = (pb as any)?.[sortKey] ?? 0 }
+      return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0)
+    })
+  }, [rows, sortKey, sortDir, search])
+
+  const Th = ({ k, label, center }: { k: MondlySortKey; label: string; center?: boolean }) => (
+    <th
+      onClick={() => toggleSort(k)}
+      className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none ${center ? 'text-center' : 'text-left'}`}
+    >
+      {label}<SortIcon k={k} />
+    </th>
+  )
+
+  return (
+    <>
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full sm:w-72 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
+      </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <Th k="name" label="Student" />
+                <Th k="level" label="Level" center />
+                <Th k="points" label="Points" center />
+                <Th k="best_streak" label="Streak" center />
+                <Th k="learning_minutes" label="Time" center />
+                <Th k="lessons_completed" label="Lessons" center />
+                <Th k="words_learned" label="Words" center />
+                <Th k="last_active_on" label="Last active" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {sorted.map((r) => {
+                const p = primary(r.entries)
+                if (!p) return null
+                const hours = Math.floor(p.learning_minutes / 60)
+                const mins = p.learning_minutes % 60
+                const inactive = !p.last_active_on || (Date.now() - new Date(p.last_active_on).getTime()) > DAYS_INACTIVE * 86400000
+                return (
+                  <tr key={r.email} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{r.name || r.email}</p>
+                          {!isCorporate && <p className="text-xs text-gray-400">{r.email}</p>}
+                        </div>
+                        {inactive && <span className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-medium shrink-0">Inactive</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-block px-2.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">{p.level}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-700">{p.points.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-700">{p.best_streak}d</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-700">{hours}h{mins > 0 ? ` ${mins}m` : ''}</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-700">{p.lessons_completed}</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-700">{p.words_learned}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {p.last_active_on ? new Date(p.last_active_on).toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
+          {sorted.length} student{sorted.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function MondlyCorporateDashboard({ rows }: { rows: MondlyRow[] }) {
+  const now = Date.now()
+
+  const stats = useMemo(() => {
+    const withPrimary = rows.map((r) => ({ r, p: primary(r.entries) })).filter((x) => x.p)
+    const totalMinutes = withPrimary.reduce((s, { p }) => s + (p!.learning_minutes), 0)
+    const avgLevel = withPrimary.length ? withPrimary.reduce((s, { p }) => s + p!.level, 0) / withPrimary.length : 0
+    const active = withPrimary.filter(({ p }) => p!.last_active_on && (now - new Date(p!.last_active_on).getTime()) < DAYS_INACTIVE * 86400000)
+    const topPoints = [...withPrimary].sort((a, b) => b.p!.points - a.p!.points).slice(0, 5)
+    const topTime = [...withPrimary].sort((a, b) => b.p!.learning_minutes - a.p!.learning_minutes).slice(0, 5)
+
+    // Level distribution
+    const levelDist: Record<number, number> = {}
+    withPrimary.forEach(({ p }) => { levelDist[p!.level] = (levelDist[p!.level] ?? 0) + 1 })
+    const levelData = Array.from({ length: 9 }, (_, i) => ({ level: `Lv.${i + 1}`, count: levelDist[i + 1] ?? 0 })).filter((d) => d.count > 0)
+
+    return {
+      total: rows.length,
+      totalHours: Math.round(totalMinutes / 60),
+      avgLevel: avgLevel.toFixed(1),
+      activeCount: active.length,
+      inactiveCount: withPrimary.length - active.length,
+      topPoints,
+      topTime,
+      levelData,
+    }
+  }, [rows])
+
+  const PURPLE = '#7c3aed'
+  const GRAY = '#e5e7eb'
+  const donutData = [
+    { name: `Active (last ${DAYS_INACTIVE}d)`, value: stats.activeCount },
+    { name: 'Inactive', value: stats.inactiveCount },
+  ]
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Team members', value: stats.total },
+          { label: 'Total hours', value: `${stats.totalHours}h` },
+          { label: 'Avg. level', value: stats.avgLevel },
+          { label: `Active last ${DAYS_INACTIVE}d`, value: `${stats.activeCount} / ${stats.total}` },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <p className="text-sm text-gray-500 mb-1">{kpi.label}</p>
+            <p className="text-3xl font-bold text-gray-900">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Level distribution */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Level distribution</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={stats.levelData} layout="vertical" margin={{ left: 0, right: 16 }}>
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="level" tick={{ fontSize: 12 }} width={36} />
+              <Tooltip formatter={(v) => [`${v} students`, '']} />
+              <Bar dataKey="count" fill={PURPLE} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Engagement donut */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Engagement</h3>
+          {stats.activeCount + stats.inactiveCount > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={donutData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} dataKey="value" paddingAngle={2}>
+                  <Cell fill={PURPLE} />
+                  <Cell fill={GRAY} />
+                </Pie>
+                <Legend formatter={(v) => <span className="text-xs text-gray-600">{v}</span>} />
+                <Tooltip formatter={(v, n) => [`${v} students`, n]} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-8">No data</p>
+          )}
+        </div>
+      </div>
+
+      {/* Top performers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {[
+          { title: 'Top 5 by points', data: stats.topPoints, getValue: (p: MondlyEntry) => `${p.points.toLocaleString()} pts` },
+          { title: 'Top 5 by time', data: stats.topTime, getValue: (p: MondlyEntry) => `${Math.round(p.learning_minutes / 60)}h ${p.learning_minutes % 60}m` },
+        ].map(({ title, data, getValue }) => (
+          <div key={title} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">{title}</h3>
+            <ol className="space-y-2">
+              {data.map(({ r, p }, i) => (
+                <li key={r.email} className="flex items-center gap-3">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${i === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{i + 1}</span>
+                  <span className="flex-1 text-sm text-gray-800 truncate">{r.name || r.email}</span>
+                  <span className="text-sm font-semibold text-purple-700 shrink-0">{getValue(p!)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function MondlyReport() {
+  const { user } = useAuth()
+  const isCorporate = user?.role === 'corporate_client'
+  const canImport = user?.role && ['owner', 'manager', 'admin'].includes(user.role)
+
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ imported: number; matched: number; unmatched: number; skipped: number } | null>(null)
   const [importError, setImportError] = useState('')
   const [rows, setRows] = useState<MondlyRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState('')
 
   const load = () => {
     apiClient.getMondlyData().then((data) => {
       const list: MondlyRow[] = Object.entries(data).map(([email, entries]) => ({
         email,
-        name: entries[0] ? (entries[0] as any).name ?? email : email,
+        name: entries[0]?.name ?? email,
         entries,
-      })).sort((a, b) => a.email.localeCompare(b.email))
+      })).sort((a, b) => a.name.localeCompare(b.name))
       setRows(list)
       setIsLoading(false)
     }).catch(() => setIsLoading(false))
@@ -1068,115 +1299,45 @@ function MondlyReport() {
     }
   }
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return q ? rows.filter((r) => r.email.includes(q) || r.name.toLowerCase().includes(q)) : rows
-  }, [rows, search])
-
-  const primary = (entries: MondlyEntry[]) =>
-    entries.find((e) => e.language === 'English' || e.language === 'American English') ?? entries[0]
-
   return (
     <>
-      {/* Upload card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-800">Import Mondly report</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Upload the Excel or CSV export from Mondly. The file is parsed in memory — not stored.</p>
+      {canImport && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">Import Mondly report</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Upload the Excel or CSV export from Mondly. Parsed in memory — file not stored.</p>
+            </div>
+            <label className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition ${importing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              {importing ? 'Importing...' : 'Upload file'}
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} disabled={importing} />
+            </label>
           </div>
-          <label className={`shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition ${importing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-            {importing ? 'Importing...' : 'Upload file'}
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFile} disabled={importing} />
-          </label>
+          {importResult && (
+            <div className="mt-4 flex flex-wrap gap-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+              <span className="text-green-700 font-medium">Import complete</span>
+              <span className="text-gray-600">{importResult.imported} records imported</span>
+              <span className="text-green-600">{importResult.matched} matched to students</span>
+              {importResult.unmatched > 0 && <span className="text-amber-600">{importResult.unmatched} unmatched</span>}
+            </div>
+          )}
+          {importError && <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{importError}</div>}
         </div>
-
-        {importResult && (
-          <div className="mt-4 flex flex-wrap gap-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-            <span className="text-green-700 font-medium">Import complete</span>
-            <span className="text-gray-600">{importResult.imported} records imported</span>
-            <span className="text-green-600">{importResult.matched} matched to students</span>
-            {importResult.unmatched > 0 && <span className="text-amber-600">{importResult.unmatched} unmatched (no BLEST student with that email)</span>}
-            {importResult.skipped > 0 && <span className="text-gray-400">{importResult.skipped} skipped</span>}
-          </div>
-        )}
-        {importError && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{importError}</div>
-        )}
-      </div>
+      )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
+        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600" /></div>
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-400 text-sm">
-          No Mondly data yet. Upload a report to get started.
+          {isCorporate ? 'No Mondly data available for your team yet.' : 'No Mondly data yet. Upload a report to get started.'}
         </div>
       ) : (
         <>
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-72 px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Level</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Points</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Streak</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Lessons</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Words</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last active</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filtered.map((r) => {
-                    const p = primary(r.entries)
-                    if (!p) return null
-                    const hours = Math.floor(p.learning_minutes / 60)
-                    const mins = p.learning_minutes % 60
-                    return (
-                      <tr key={r.email} className="hover:bg-gray-50 transition">
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-medium text-gray-900">{r.name || r.email}</p>
-                          <p className="text-xs text-gray-400">{r.email}</p>
-                          {r.entries.length > 1 && (
-                            <div className="flex gap-1 mt-1">
-                              {r.entries.map((e) => (
-                                <span key={e.language} className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-xs">{e.language}</span>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-block px-2.5 py-0.5 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">{p.level}</span>
-                        </td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.points.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.best_streak}d</td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-700">{hours}h{mins > 0 ? ` ${mins}m` : ''}</td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.lessons_completed}</td>
-                        <td className="px-6 py-4 text-center text-sm text-gray-700">{p.words_learned}</td>
-                        <td className="px-6 py-4 text-xs text-gray-500">
-                          {p.last_active_on ? new Date(p.last_active_on).toLocaleDateString() : '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
-              {filtered.length} student{filtered.length !== 1 ? 's' : ''} with Mondly data
-            </div>
+          {isCorporate && <MondlyCorporateDashboard rows={rows} />}
+          <div className={isCorporate ? 'mt-6' : ''}>
+            {isCorporate && <h3 className="text-sm font-semibold text-gray-700 mb-3">Full team breakdown</h3>}
+            <MondlyTable rows={rows} isCorporate={isCorporate} />
           </div>
         </>
       )}
@@ -1194,7 +1355,7 @@ const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: bo
   { value: 'groups', label: 'Groups', teacherHidden: true },
   { value: 'levels', label: 'Levels', teacherHidden: true },
   { value: 'teachers', label: 'Teachers', teacherHidden: true, ownerOnly: true },
-  { value: 'mondly', label: 'Mondly', teacherHidden: true, ownerOnly: true },
+  { value: 'mondly', label: 'Mondly', teacherHidden: true },
 ]
 
 export default function ReportesPage() {
@@ -1215,8 +1376,10 @@ export default function ReportesPage() {
     checkAuth()
   }, [user, me, router])
 
+  const isCorporateClient = user?.role === 'corporate_client'
   const visibleTabs = TABS.filter((t) => {
     if (isTeacher && t.teacherHidden) return false
+    if (isCorporateClient && t.teacherHidden) return false
     if (t.ownerOnly && !isOwnerOrManager) return false
     return true
   })

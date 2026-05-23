@@ -114,6 +114,7 @@ export interface Evaluation {
 }
 
 export interface MondlyEntry {
+  name: string
   language: string
   level: number
   points: number

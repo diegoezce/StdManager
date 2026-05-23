@@ -705,15 +705,35 @@ def mondly_import(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def mondly_data(request):
-    """Return latest Mondly records for the org, keyed by email."""
+    """Return latest Mondly records for the org, keyed by email.
+    Corporate clients only see records matching their students."""
     organization = request.user.organization
     records = MondlyRecord.objects.filter(organization=organization).order_by('email', 'language')
+
+    # Corporate clients: filter to their students only
+    if request.user.role == 'corporate_client':
+        if request.user.corporate_client_id:
+            cc_emails = set(
+                Student.objects.filter(
+                    organization=organization,
+                    corporate_client_id=request.user.corporate_client_id,
+                ).values_list('user__email', flat=True)
+            )
+        else:
+            cc_emails = set(
+                Student.objects.filter(
+                    organization=organization,
+                    corporate_client__contact_email=request.user.email,
+                ).values_list('user__email', flat=True)
+            )
+        records = records.filter(email__in=[e.lower() for e in cc_emails])
 
     result = {}
     for r in records:
         if r.email not in result:
             result[r.email] = []
         result[r.email].append({
+            'name': r.name,
             'language': r.language,
             'level': r.level,
             'points': r.points,
