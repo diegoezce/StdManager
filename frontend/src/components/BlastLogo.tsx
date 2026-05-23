@@ -30,7 +30,7 @@ export function BlastLogo({
         viewBox="0 0 64 64"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        aria-label="BLAST"
+        aria-label="BLEST"
         role="img"
       >
         <rect x="2" y="2" width="60" height="60" rx="14" fill="#312E81" />
@@ -50,7 +50,7 @@ export function BlastLogo({
             className={`font-serif font-semibold tracking-[0.18em] text-indigo-900 ${s.wordmark}`}
             style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
           >
-            BLAST
+            BLEST
           </span>
           {showTagline && (
             <span className={`mt-1 uppercase tracking-[0.22em] text-slate-500 ${s.tagline}`}>

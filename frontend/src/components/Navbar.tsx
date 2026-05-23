@@ -18,7 +18,7 @@ export function Navbar() {
 
   useEffect(() => {
     if (user) {
-      document.title = user.brand_name || user.organization_name || 'BLAST'
+      document.title = user.brand_name || user.organization_name || 'BLEST'
     }
   }, [user?.brand_name, user?.organization_name])
 

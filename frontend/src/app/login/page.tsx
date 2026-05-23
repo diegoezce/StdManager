@@ -147,7 +147,7 @@ export default function LoginPage() {
 
       <footer className="px-6 sm:px-10 py-5 border-t border-slate-200 bg-white">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <span>© {new Date().getFullYear()} BLAST · Educational Management Platform</span>
+          <span>© {new Date().getFullYear()} BLEST · Educational Management Platform</span>
           <span className="tracking-wider uppercase">Powered by GoPlanify</span>
         </div>
       </footer>
