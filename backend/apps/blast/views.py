@@ -136,6 +136,12 @@ class GroupViewSet(viewsets.ModelViewSet):
                 organization=self.request.user.organization,
                 defaults={'status': 'active'},
             )
+            if not created and enrollment.status != 'active':
+                enrollment.status = 'active'
+                enrollment.drop_date = None
+                enrollment.drop_reason = ''
+                enrollment.save()
+                created = True
             logger.info('Enrollment %s: student %s → group %s', 'created' if created else 'existing', student_id, group.id)
         except Exception as e:
             logger.error('Enroll failed student %s → group %s: %s', student_id, group.id, e, exc_info=True)
