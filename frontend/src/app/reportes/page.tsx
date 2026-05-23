@@ -8,9 +8,18 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
-// ── Shared ──────────────────────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
 const LEVEL_LABEL: Record<string, string> = {
+  beginner: 'A1 – Beginner',
+  elementary: 'A2 – Elementary',
+  'pre-intermediate': 'B1 – Pre-Intermediate',
+  intermediate: 'B1+ – Intermediate',
+  'upper-intermediate': 'B2 – Upper Intermediate',
+  advanced: 'C1 – Advanced',
+}
+
+const LEVEL_LABEL_SHORT: Record<string, string> = {
   beginner: 'A1',
   elementary: 'A2',
   'pre-intermediate': 'B1',
@@ -19,6 +28,8 @@ const LEVEL_LABEL: Record<string, string> = {
   advanced: 'C1',
 }
 
+const LEVEL_ORDER = ['beginner', 'elementary', 'pre-intermediate', 'intermediate', 'upper-intermediate', 'advanced']
+
 const LEVEL_COLOR: Record<string, string> = {
   beginner: 'bg-gray-100 text-gray-700',
   elementary: 'bg-blue-100 text-blue-700',
@@ -26,6 +37,15 @@ const LEVEL_COLOR: Record<string, string> = {
   intermediate: 'bg-amber-100 text-amber-700',
   'upper-intermediate': 'bg-orange-100 text-orange-700',
   advanced: 'bg-green-100 text-green-700',
+}
+
+const LEVEL_BAR_COLOR: Record<string, string> = {
+  beginner: 'bg-gray-400',
+  elementary: 'bg-blue-400',
+  'pre-intermediate': 'bg-yellow-400',
+  intermediate: 'bg-amber-400',
+  'upper-intermediate': 'bg-orange-400',
+  advanced: 'bg-green-500',
 }
 
 function AttendanceBar({ rate }: { rate: number | null }) {
@@ -41,32 +61,39 @@ function AttendanceBar({ rate }: { rate: number | null }) {
   )
 }
 
+function FilterPills<T extends string>({
+  label, options, value, onChange,
+}: { label: string; options: T[]; value: T | 'all'; onChange: (v: T | 'all') => void }) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-sm font-medium text-gray-600 shrink-0">{label}:</span>
+      <div className="flex gap-1 flex-wrap">
+        <button onClick={() => onChange('all')} className={`px-3 py-1 rounded-full text-sm font-medium transition ${value === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>All</button>
+        {options.map((o) => (
+          <button key={o} onClick={() => onChange(o)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${value === o ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{o}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type StudentRow = {
-  id: string
-  full_name: string
-  email: string
-  company: string | null
-  company_id: string | null
-  english_level: string
-  is_active: boolean
-  attendance_rate: number | null
-  total_sessions: number
-  current_groups: string[]
+  id: string; full_name: string; email: string; company: string | null; company_id: string | null
+  english_level: string; is_active: boolean; attendance_rate: number | null
+  total_sessions: number; current_groups: string[]
 }
 
 type AttendanceRow = {
-  student_id: string
-  student_name: string
-  company: string | null
-  groups: string[]
-  present: number
-  absent: number
-  late: number
-  excused: number
-  total: number
-  rate: number | null
+  student_id: string; student_name: string; company: string | null; groups: string[]
+  present: number; absent: number; late: number; excused: number; total: number; rate: number | null
+}
+
+type GroupRow = {
+  id: string; name: string; level: string
+  teacher__user__first_name: string; teacher__user__last_name: string
+  status: string; student_count: number; max_students: number
 }
 
 type Period = 'month' | 'semester' | 'year'
@@ -77,12 +104,13 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'year', label: 'Last year' },
 ]
 
-// ── Students sub-report ──────────────────────────────────────────────────────
+// ── Students report ──────────────────────────────────────────────────────────
 
 function StudentsReport() {
   const [students, setStudents] = useState<StudentRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
+  const [selectedGroup, setSelectedGroup] = useState<string>('all')
   const [showInactive, setShowInactive] = useState(false)
   const [sortKey, setSortKey] = useState<'full_name' | 'company' | 'english_level' | 'attendance_rate'>('full_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -94,74 +122,62 @@ function StudentsReport() {
     }).catch(() => setIsLoading(false))
   }, [])
 
-  const companies = useMemo(() => {
-    const names = Array.from(new Set(students.map((s) => s.company).filter(Boolean))) as string[]
-    return names.sort()
-  }, [students])
+  const companies = useMemo(() =>
+    Array.from(new Set(students.map((s) => s.company).filter(Boolean))).sort() as string[]
+  , [students])
+
+  const allGroups = useMemo(() =>
+    Array.from(new Set(students.flatMap((s) => s.current_groups))).sort()
+  , [students])
 
   const filtered = useMemo(() => {
     let rows = students
-    if (selectedCompany !== 'all') rows = rows.filter((s) => s.company === selectedCompany)
     if (!showInactive) rows = rows.filter((s) => s.is_active)
+    if (selectedCompany !== 'all') rows = rows.filter((s) => s.company === selectedCompany)
+    if (selectedGroup !== 'all') rows = rows.filter((s) => s.current_groups.includes(selectedGroup))
     return [...rows].sort((a, b) => {
       let va: any = a[sortKey] ?? ''
       let vb: any = b[sortKey] ?? ''
       if (sortKey === 'attendance_rate') { va = va ?? -1; vb = vb ?? -1 }
       if (typeof va === 'string') va = va.toLowerCase()
       if (typeof vb === 'string') vb = vb.toLowerCase()
-      if (va < vb) return sortDir === 'asc' ? -1 : 1
-      if (va > vb) return sortDir === 'asc' ? 1 : -1
-      return 0
+      return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0)
     })
-  }, [students, selectedCompany, showInactive, sortKey, sortDir])
+  }, [students, selectedCompany, selectedGroup, showInactive, sortKey, sortDir])
 
   const stats = useMemo(() => {
-    const scope = selectedCompany === 'all' ? students : students.filter((s) => s.company === selectedCompany)
+    const scope = filtered.filter((s) => s.is_active || showInactive)
     const active = scope.filter((s) => s.is_active)
     const withRate = active.filter((s) => s.attendance_rate !== null)
-    const avgRate = withRate.length
-      ? Math.round(withRate.reduce((sum, s) => sum + (s.attendance_rate ?? 0), 0) / withRate.length)
-      : null
+    const avgRate = withRate.length ? Math.round(withRate.reduce((sum, s) => sum + (s.attendance_rate ?? 0), 0) / withRate.length) : null
     return {
       total: active.length,
       companies: new Set(active.map((s) => s.company).filter(Boolean)).size,
       avgRate,
       withGroup: active.filter((s) => s.current_groups.length > 0).length,
     }
-  }, [students, selectedCompany])
+  }, [filtered, showInactive])
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('asc') }
   }
-
   const SortIcon = ({ k }: { k: typeof sortKey }) =>
-    sortKey === k
-      ? <span className="ml-1 text-blue-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
-      : <span className="ml-1 text-gray-300">↕</span>
+    sortKey === k ? <span className="ml-1 text-indigo-600">{sortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">↕</span>
 
-  if (isLoading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
+  if (isLoading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
 
   return (
     <>
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4 print:hidden">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">Company:</span>
-          <div className="flex gap-1 flex-wrap">
-            <button onClick={() => setSelectedCompany('all')} className={`px-3 py-1 rounded-full text-sm font-medium transition ${selectedCompany === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>All</button>
-            {companies.map((c) => (
-              <button key={c} onClick={() => setSelectedCompany(c)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${selectedCompany === c ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{c}</button>
-            ))}
-          </div>
-        </div>
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer ml-auto">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col gap-3 print:hidden">
+        {companies.length > 0 && <FilterPills label="Company" options={companies} value={selectedCompany} onChange={setSelectedCompany} />}
+        {allGroups.length > 0 && <FilterPills label="Group" options={allGroups} value={selectedGroup} onChange={setSelectedGroup} />}
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
           Show inactive
         </label>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Active students', value: stats.total },
@@ -176,13 +192,7 @@ function StudentsReport() {
         ))}
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {selectedCompany !== 'all' && (
-          <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
-            <p className="text-sm font-semibold text-blue-800">{selectedCompany}</p>
-          </div>
-        )}
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
@@ -192,7 +202,7 @@ function StudentsReport() {
                     {label} <SortIcon k={k} />
                   </th>
                 ))}
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Current group</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
                 <th onClick={() => toggleSort('attendance_rate')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
                   Attendance <SortIcon k="attendance_rate" />
                 </th>
@@ -203,7 +213,7 @@ function StudentsReport() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400 text-sm">No students to display</td></tr>
               ) : filtered.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50 transition">
+                <tr key={s.id} className={`hover:bg-gray-50 transition ${!s.is_active ? 'opacity-60' : ''}`}>
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900 text-sm">{s.full_name}</p>
                     <p className="text-xs text-gray-400">{s.email}</p>
@@ -211,7 +221,7 @@ function StudentsReport() {
                   <td className="px-6 py-4 text-sm text-gray-600">{s.company ?? <span className="text-gray-300">—</span>}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[s.english_level] ?? 'bg-gray-100 text-gray-700'}`}>
-                      {LEVEL_LABEL[s.english_level] ?? s.english_level}
+                      {LEVEL_LABEL_SHORT[s.english_level] ?? s.english_level}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
@@ -233,109 +243,97 @@ function StudentsReport() {
           </table>
         </div>
         <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
-          {filtered.length} student{filtered.length !== 1 ? 's' : ''}{selectedCompany !== 'all' ? ` from ${selectedCompany}` : ' total'}
+          {filtered.length} student{filtered.length !== 1 ? 's' : ''}
         </div>
       </div>
     </>
   )
 }
 
-// ── Attendance sub-report ────────────────────────────────────────────────────
+// ── Attendance report ─────────────────────────────────────────────────────────
 
 function AttendanceReport() {
   const [rows, setRows] = useState<AttendanceRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('month')
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
+  const [selectedGroup, setSelectedGroup] = useState<string>('all')
   const [sortKey, setSortKey] = useState<'student_name' | 'company' | 'rate' | 'total'>('student_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
     setIsLoading(true)
+    setSelectedGroup('all')
     apiClient.getAttendanceReport(period).then((data) => {
       setRows(data)
       setIsLoading(false)
     }).catch(() => setIsLoading(false))
   }, [period])
 
-  const companies = useMemo(() => {
-    const names = Array.from(new Set(rows.map((r) => r.company).filter(Boolean))) as string[]
-    return names.sort()
-  }, [rows])
+  const companies = useMemo(() =>
+    Array.from(new Set(rows.map((r) => r.company).filter(Boolean))).sort() as string[]
+  , [rows])
+
+  const allGroups = useMemo(() =>
+    Array.from(new Set(rows.flatMap((r) => r.groups))).sort()
+  , [rows])
 
   const filtered = useMemo(() => {
     let data = rows
     if (selectedCompany !== 'all') data = data.filter((r) => r.company === selectedCompany)
+    if (selectedGroup !== 'all') data = data.filter((r) => r.groups.includes(selectedGroup))
     return [...data].sort((a, b) => {
       let va: any = a[sortKey] ?? ''
       let vb: any = b[sortKey] ?? ''
       if (sortKey === 'rate' || sortKey === 'total') { va = va ?? -1; vb = vb ?? -1 }
       if (typeof va === 'string') va = va.toLowerCase()
       if (typeof vb === 'string') vb = vb.toLowerCase()
-      if (va < vb) return sortDir === 'asc' ? -1 : 1
-      if (va > vb) return sortDir === 'asc' ? 1 : -1
-      return 0
+      return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0)
     })
-  }, [rows, selectedCompany, sortKey, sortDir])
+  }, [rows, selectedCompany, selectedGroup, sortKey, sortDir])
 
   const stats = useMemo(() => {
-    const scope = selectedCompany === 'all' ? rows : rows.filter((r) => r.company === selectedCompany)
-    const withRate = scope.filter((r) => r.rate !== null)
-    const avgRate = withRate.length
-      ? Math.round(withRate.reduce((s, r) => s + (r.rate ?? 0), 0) / withRate.length)
-      : null
-    const total = scope.reduce((s, r) => s + r.total, 0)
-    const present = scope.reduce((s, r) => s + r.present, 0)
-    const absent = scope.reduce((s, r) => s + r.absent, 0)
-    return { students: scope.length, avgRate, total, present, absent }
-  }, [rows, selectedCompany])
+    const withRate = filtered.filter((r) => r.rate !== null)
+    const avgRate = withRate.length ? Math.round(withRate.reduce((s, r) => s + (r.rate ?? 0), 0) / withRate.length) : null
+    return {
+      students: filtered.length,
+      avgRate,
+      total: filtered.reduce((s, r) => s + r.total, 0),
+      absent: filtered.reduce((s, r) => s + r.absent, 0),
+    }
+  }, [filtered])
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortKey(key); setSortDir('asc') }
   }
-
   const SortIcon = ({ k }: { k: typeof sortKey }) =>
-    sortKey === k
-      ? <span className="ml-1 text-blue-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
-      : <span className="ml-1 text-gray-300">↕</span>
-
-  const StatusPill = ({ count, color }: { count: number; color: string }) => (
+    sortKey === k ? <span className="ml-1 text-indigo-600">{sortDir === 'asc' ? '↑' : '↓'}</span> : <span className="ml-1 text-gray-300">↕</span>
+  const Pill = ({ count, color }: { count: number; color: string }) => (
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>{count}</span>
   )
 
   return (
     <>
-      {/* Period + Company filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-wrap items-center gap-4 print:hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col gap-3 print:hidden">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">Period:</span>
+          <span className="text-sm font-medium text-gray-600 shrink-0">Period:</span>
           <div className="flex gap-1">
             {PERIODS.map((p) => (
-              <button key={p.value} onClick={() => setPeriod(p.value)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${period === p.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              <button key={p.value} onClick={() => setPeriod(p.value)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${period === p.value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
                 {p.label}
               </button>
             ))}
           </div>
         </div>
-        {companies.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600">Company:</span>
-            <div className="flex gap-1 flex-wrap">
-              <button onClick={() => setSelectedCompany('all')} className={`px-3 py-1 rounded-full text-sm font-medium transition ${selectedCompany === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>All</button>
-              {companies.map((c) => (
-                <button key={c} onClick={() => setSelectedCompany(c)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${selectedCompany === c ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{c}</button>
-              ))}
-            </div>
-          </div>
-        )}
+        {companies.length > 0 && <FilterPills label="Company" options={companies} value={selectedCompany} onChange={setSelectedCompany} />}
+        {allGroups.length > 0 && <FilterPills label="Group" options={allGroups} value={selectedGroup} onChange={setSelectedGroup} />}
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
+        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
       ) : (
         <>
-          {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[
               { label: 'Students', value: stats.students },
@@ -350,28 +348,19 @@ function AttendanceReport() {
             ))}
           </div>
 
-          {/* Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th onClick={() => toggleSort('student_name')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
-                      Student <SortIcon k="student_name" />
-                    </th>
-                    <th onClick={() => toggleSort('company')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
-                      Company <SortIcon k="company" />
-                    </th>
+                    <th onClick={() => toggleSort('student_name')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Student <SortIcon k="student_name" /></th>
+                    <th onClick={() => toggleSort('company')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Company <SortIcon k="company" /></th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
-                    <th onClick={() => toggleSort('total')} className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
-                      Classes <SortIcon k="total" />
-                    </th>
+                    <th onClick={() => toggleSort('total')} className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Classes <SortIcon k="total" /></th>
                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Present</th>
                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Absent</th>
                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Late</th>
-                    <th onClick={() => toggleSort('rate')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
-                      Rate <SortIcon k="rate" />
-                    </th>
+                    <th onClick={() => toggleSort('rate')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Rate <SortIcon k="rate" /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -383,9 +372,9 @@ function AttendanceReport() {
                       <td className="px-6 py-4 text-sm text-gray-600">{r.company ?? <span className="text-gray-300">—</span>}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{r.groups.join(', ') || <span className="text-gray-300">—</span>}</td>
                       <td className="px-6 py-4 text-center text-sm text-gray-700">{r.total}</td>
-                      <td className="px-6 py-4 text-center"><StatusPill count={r.present} color="bg-green-100 text-green-700" /></td>
-                      <td className="px-6 py-4 text-center"><StatusPill count={r.absent} color="bg-red-100 text-red-700" /></td>
-                      <td className="px-6 py-4 text-center"><StatusPill count={r.late} color="bg-yellow-100 text-yellow-700" /></td>
+                      <td className="px-6 py-4 text-center"><Pill count={r.present} color="bg-green-100 text-green-700" /></td>
+                      <td className="px-6 py-4 text-center"><Pill count={r.absent} color="bg-red-100 text-red-700" /></td>
+                      <td className="px-6 py-4 text-center"><Pill count={r.late} color="bg-yellow-100 text-yellow-700" /></td>
                       <td className="px-6 py-4"><AttendanceBar rate={r.rate} /></td>
                     </tr>
                   ))}
@@ -402,14 +391,283 @@ function AttendanceReport() {
   )
 }
 
+// ── Groups report ─────────────────────────────────────────────────────────────
+
+function GroupsReport() {
+  const [groups, setGroups] = useState<GroupRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedLevel, setSelectedLevel] = useState<string>('all')
+  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+
+  useEffect(() => {
+    apiClient.getReports('groups').then((data) => {
+      setGroups(data)
+      setIsLoading(false)
+    }).catch(() => setIsLoading(false))
+  }, [])
+
+  const levels = useMemo(() =>
+    LEVEL_ORDER.filter((l) => groups.some((g) => g.level === l))
+  , [groups])
+
+  const filtered = useMemo(() => {
+    let data = groups
+    if (selectedLevel !== 'all') data = data.filter((g) => g.level === selectedLevel)
+    if (selectedStatus !== 'all') data = data.filter((g) => g.status === selectedStatus)
+    return data
+  }, [groups, selectedLevel, selectedStatus])
+
+  const stats = useMemo(() => {
+    const active = groups.filter((g) => g.status === 'active')
+    const totalCapacity = active.reduce((s, g) => s + g.max_students, 0)
+    const totalEnrolled = active.reduce((s, g) => s + g.student_count, 0)
+    return {
+      total: groups.length,
+      active: active.length,
+      totalCapacity,
+      totalEnrolled,
+      occupancy: totalCapacity > 0 ? Math.round(totalEnrolled / totalCapacity * 100) : 0,
+    }
+  }, [groups])
+
+  if (isLoading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
+
+  return (
+    <>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col gap-3 print:hidden">
+        {levels.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-600 shrink-0">Level:</span>
+            <div className="flex gap-1 flex-wrap">
+              <button onClick={() => setSelectedLevel('all')} className={`px-3 py-1 rounded-full text-sm font-medium transition ${selectedLevel === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>All</button>
+              {levels.map((l) => (
+                <button key={l} onClick={() => setSelectedLevel(l)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${selectedLevel === l ? 'bg-indigo-600 text-white' : `${LEVEL_COLOR[l]} hover:opacity-80`}`}>
+                  {LEVEL_LABEL_SHORT[l]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600 shrink-0">Status:</span>
+          <div className="flex gap-1">
+            {(['all', 'active', 'planning', 'completed'] as const).map((s) => (
+              <button key={s} onClick={() => setSelectedStatus(s)} className={`px-3 py-1 rounded-full text-sm font-medium transition capitalize ${selectedStatus === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{s}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Total groups', value: stats.total },
+          { label: 'Active groups', value: stats.active },
+          { label: 'Total enrolled', value: `${stats.totalEnrolled} / ${stats.totalCapacity}` },
+          { label: 'Occupancy', value: `${stats.occupancy}%` },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <p className="text-sm text-gray-500 mb-1">{kpi.label}</p>
+            <p className="text-3xl font-bold text-gray-900">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Level</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Enrolled</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Capacity</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400 text-sm">No groups to display</td></tr>
+              ) : filtered.map((g) => {
+                const pct = g.max_students > 0 ? Math.round(g.student_count / g.max_students * 100) : 0
+                const barColor = pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-green-400'
+                return (
+                  <tr key={g.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{g.name}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[g.level] ?? 'bg-gray-100 text-gray-700'}`}>
+                        {LEVEL_LABEL_SHORT[g.level] ?? g.level}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {[g.teacher__user__first_name, g.teacher__user__last_name].filter(Boolean).join(' ') || <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 bg-gray-100 rounded-full h-2">
+                          <div className={`${barColor} h-2 rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </div>
+                        <span className="text-sm text-gray-700">{g.student_count}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{g.max_students}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${g.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {g.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
+          {filtered.length} group{filtered.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ── Levels report ─────────────────────────────────────────────────────────────
+
+function LevelsReport() {
+  const [students, setStudents] = useState<StudentRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedCompany, setSelectedCompany] = useState<string>('all')
+
+  useEffect(() => {
+    apiClient.getStudentsReport().then((data) => {
+      setStudents(data.filter((s: StudentRow) => s.is_active))
+      setIsLoading(false)
+    }).catch(() => setIsLoading(false))
+  }, [])
+
+  const companies = useMemo(() =>
+    Array.from(new Set(students.map((s) => s.company).filter(Boolean))).sort() as string[]
+  , [students])
+
+  const scope = useMemo(() =>
+    selectedCompany === 'all' ? students : students.filter((s) => s.company === selectedCompany)
+  , [students, selectedCompany])
+
+  const byLevel = useMemo(() => {
+    return LEVEL_ORDER.map((level) => {
+      const group = scope.filter((s) => s.english_level === level)
+      const withRate = group.filter((s) => s.attendance_rate !== null)
+      const avgRate = withRate.length ? Math.round(withRate.reduce((sum, s) => sum + (s.attendance_rate ?? 0), 0) / withRate.length) : null
+      return { level, count: group.length, avgRate, students: group }
+    }).filter((r) => r.count > 0)
+  }, [scope])
+
+  const total = scope.length
+
+  if (isLoading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
+
+  return (
+    <>
+      {companies.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 print:hidden">
+          <FilterPills label="Company" options={companies} value={selectedCompany} onChange={setSelectedCompany} />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        {[
+          { label: 'Active students', value: total },
+          { label: 'Levels in use', value: byLevel.length },
+          { label: 'Most common level', value: byLevel.length > 0 ? (LEVEL_LABEL_SHORT[byLevel.sort((a, b) => b.count - a.count)[0].level] ?? '—') : '—' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <p className="text-sm text-gray-500 mb-1">{kpi.label}</p>
+            <p className="text-3xl font-bold text-gray-900">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Level breakdown bars */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Distribution by level</h3>
+        <div className="space-y-4">
+          {[...byLevel].sort((a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level)).map((row) => {
+            const pct = total > 0 ? Math.round(row.count / total * 100) : 0
+            return (
+              <div key={row.level}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[row.level]}`}>
+                      {LEVEL_LABEL_SHORT[row.level]}
+                    </span>
+                    <span className="text-sm text-gray-700">{LEVEL_LABEL[row.level]}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span>{row.count} student{row.count !== 1 ? 's' : ''} <span className="text-gray-400">({pct}%)</span></span>
+                    {row.avgRate !== null && (
+                      <span className="text-xs text-gray-400">avg attendance {row.avgRate}%</span>
+                    )}
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-3">
+                  <div className={`${LEVEL_BAR_COLOR[row.level]} h-3 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Detail table */}
+      <div className="space-y-4">
+        {[...byLevel].sort((a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level)).map((row) => (
+          <details key={row.level} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <summary className="px-6 py-4 cursor-pointer flex items-center justify-between hover:bg-gray-50 transition list-none">
+              <div className="flex items-center gap-3">
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[row.level]}`}>
+                  {LEVEL_LABEL_SHORT[row.level]}
+                </span>
+                <span className="font-medium text-gray-800">{LEVEL_LABEL[row.level]}</span>
+                <span className="text-sm text-gray-400">{row.count} student{row.count !== 1 ? 's' : ''}</span>
+              </div>
+              {row.avgRate !== null && <AttendanceBar rate={row.avgRate} />}
+            </summary>
+            <div className="border-t border-gray-100">
+              <table className="min-w-full">
+                <tbody className="divide-y divide-gray-50">
+                  {row.students.sort((a, b) => a.full_name.localeCompare(b.full_name)).map((s) => (
+                    <tr key={s.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{s.full_name}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{s.company ?? '—'}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{s.current_groups.join(', ') || '—'}</td>
+                      <td className="px-6 py-3"><AttendanceBar rate={s.attendance_rate} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ))}
+      </div>
+    </>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'students' | 'attendance'
+type Tab = 'students' | 'attendance' | 'groups' | 'levels'
+
+const TABS: { value: Tab; label: string; teacherHidden?: boolean }[] = [
+  { value: 'students', label: 'Students', teacherHidden: true },
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'groups', label: 'Groups', teacherHidden: true },
+  { value: 'levels', label: 'Levels', teacherHidden: true },
+]
 
 export default function ReportesPage() {
   const router = useRouter()
   const { user, me } = useAuth()
-  const [activeTab, setActiveTab] = useState<Tab>(user?.role === 'teacher' ? 'attendance' : 'students')
+  const isTeacher = user?.role === 'teacher'
+  const [activeTab, setActiveTab] = useState<Tab>(isTeacher ? 'attendance' : 'students')
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -422,7 +680,7 @@ export default function ReportesPage() {
     checkAuth()
   }, [user, me, router])
 
-  const isTeacher = user?.role === 'teacher'
+  const visibleTabs = TABS.filter((t) => !(isTeacher && t.teacherHidden))
   const today = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
@@ -431,7 +689,6 @@ export default function ReportesPage() {
         <Navbar />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
           <PageHeader
             eyebrow="Analítica"
             title="Reportes"
@@ -446,26 +703,26 @@ export default function ReportesPage() {
             }
           />
 
-          {/* Tabs — teachers only see Attendance */}
-          {!isTeacher && (
-            <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-1 w-fit print:hidden">
-              {([['students', 'Students'], ['attendance', 'Attendance']] as const).map(([tab, label]) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-                    activeTab === tab
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-1 w-fit print:hidden">
+            {visibleTabs.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+                  activeTab === tab.value
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          {activeTab === 'students' ? <StudentsReport /> : <AttendanceReport />}
+          {activeTab === 'students' && <StudentsReport />}
+          {activeTab === 'attendance' && <AttendanceReport />}
+          {activeTab === 'groups' && <GroupsReport />}
+          {activeTab === 'levels' && <LevelsReport />}
         </div>
       </div>
 
