@@ -77,6 +77,109 @@ function FilterPills<T extends string>({
   )
 }
 
+// ── Student profile drawer ────────────────────────────────────────────────────
+
+function StudentDrawer({ student, onClose }: { student: StudentRow | null; onClose: () => void }) {
+  const isOpen = !!student
+
+  // close on Escape
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen, onClose])
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div className={`fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        {student && (
+          <>
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+              <div className="flex-1 min-w-0 pr-4">
+                <h2 className="text-lg font-semibold text-gray-900 truncate">{student.full_name}</h2>
+                <p className="text-sm text-gray-400 truncate">{student.email}</p>
+              </div>
+              <button onClick={onClose} className="shrink-0 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              {/* Status + Level */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${student.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${student.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  {student.is_active ? 'Active' : 'Inactive'}
+                </span>
+                {student.english_level && (
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${LEVEL_COLOR[student.english_level] ?? 'bg-gray-100 text-gray-700'}`}>
+                    {LEVEL_LABEL[student.english_level] ?? student.english_level}
+                  </span>
+                )}
+              </div>
+
+              {/* Details */}
+              <div className="space-y-4">
+                {student.company && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Company</p>
+                    <p className="text-sm text-gray-800">{student.company}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Active groups</p>
+                  {student.current_groups.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {student.current_groups.map((g) => (
+                        <span key={g} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium">{g}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">Not enrolled in any group</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Attendance</p>
+                  {student.attendance_rate !== null ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
+                          <div
+                            className={`h-3 rounded-full ${student.attendance_rate >= 80 ? 'bg-green-500' : student.attendance_rate >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
+                            style={{ width: `${Math.min(student.attendance_rate, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-2xl font-bold text-gray-900 w-16 text-right">{student.attendance_rate}%</span>
+                      </div>
+                      <p className="text-sm text-gray-500">{student.total_sessions} class{student.total_sessions !== 1 ? 'es' : ''} recorded</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">No attendance records</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type StudentRow = {
@@ -114,6 +217,7 @@ function StudentsReport() {
   const [showInactive, setShowInactive] = useState(false)
   const [sortKey, setSortKey] = useState<'full_name' | 'company' | 'english_level' | 'attendance_rate'>('full_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [drawerStudent, setDrawerStudent] = useState<StudentRow | null>(null)
 
   useEffect(() => {
     apiClient.getStudentsReport().then((data) => {
@@ -213,7 +317,7 @@ function StudentsReport() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400 text-sm">No students to display</td></tr>
               ) : filtered.map((s) => (
-                <tr key={s.id} className={`hover:bg-gray-50 transition ${!s.is_active ? 'opacity-60' : ''}`}>
+                <tr key={s.id} onClick={() => setDrawerStudent(s)} className={`hover:bg-indigo-50/40 cursor-pointer transition ${!s.is_active ? 'opacity-60' : ''}`}>
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900 text-sm">{s.full_name}</p>
                     <p className="text-xs text-gray-400">{s.email}</p>
@@ -246,6 +350,8 @@ function StudentsReport() {
           {filtered.length} student{filtered.length !== 1 ? 's' : ''}
         </div>
       </div>
+
+      <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} />
     </>
   )
 }
@@ -536,6 +642,7 @@ function LevelsReport() {
   const [students, setStudents] = useState<StudentRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
+  const [drawerStudent, setDrawerStudent] = useState<StudentRow | null>(null)
 
   useEffect(() => {
     apiClient.getStudentsReport().then((data) => {
@@ -635,7 +742,7 @@ function LevelsReport() {
               <table className="min-w-full">
                 <tbody className="divide-y divide-gray-50">
                   {row.students.sort((a, b) => a.full_name.localeCompare(b.full_name)).map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-50">
+                    <tr key={s.id} onClick={() => setDrawerStudent(s)} className="hover:bg-indigo-50/40 cursor-pointer transition">
                       <td className="px-6 py-3 text-sm font-medium text-gray-900">{s.full_name}</td>
                       <td className="px-6 py-3 text-sm text-gray-500">{s.company ?? '—'}</td>
                       <td className="px-6 py-3 text-sm text-gray-500">{s.current_groups.join(', ') || '—'}</td>
@@ -648,6 +755,8 @@ function LevelsReport() {
           </details>
         ))}
       </div>
+
+      <StudentDrawer student={drawerStudent} onClose={() => setDrawerStudent(null)} />
     </>
   )
 }
