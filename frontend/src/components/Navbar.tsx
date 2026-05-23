@@ -31,7 +31,7 @@ export function Navbar() {
     { label: 'Students', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },
     { label: 'Companies', href: '/empresas', roles: ['owner', 'manager', 'admin'] },
     { label: 'Users', href: '/usuarios', roles: ['owner', 'manager'] },
-    { label: 'Attendance', href: '/asistencia', roles: ['teacher', 'manager', 'admin'] },
+    { label: 'Attendance', href: '/asistencia', roles: ['teacher', 'manager', 'admin', 'owner'] },
     { label: 'My Groups', href: '/mis-grupos', roles: ['student'] },
     { label: 'My Progress', href: '/mi-progreso', roles: ['student'] },
     { label: 'Estudiantes', href: '/estudiantes', roles: ['corporate_client'] },
