@@ -4,7 +4,7 @@ from .views import (
     CorporateClientViewSet, TeacherViewSet, StudentViewSet,
     GroupViewSet, EnrollmentViewSet, AttendanceViewSet,
     EvaluationViewSet, CertificateViewSet,
-    attendance_report, students_report, groups_report
+    attendance_report, students_report, groups_report, teachers_report
 )
 
 router = DefaultRouter()
@@ -22,4 +22,5 @@ urlpatterns = [
     path('reports/attendance/', attendance_report, name='attendance-report'),
     path('reports/students/', students_report, name='students-report'),
     path('reports/groups/', groups_report, name='groups-report'),
+    path('reports/teachers/', teachers_report, name='teachers-report'),
 ]

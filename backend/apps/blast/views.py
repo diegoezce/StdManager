@@ -457,3 +457,88 @@ def groups_report(request):
     ).order_by('name')
 
     return Response(list(groups))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def teachers_report(request):
+    """Hours per teacher for a calendar month. 1 class-day per group = 1 hour."""
+    from apps.core.permissions import IsOwnerOrManager
+    if request.user.role not in ('owner', 'manager', 'super_admin'):
+        from rest_framework.exceptions import PermissionDenied
+        raise PermissionDenied()
+
+    import calendar
+    from django.db.models import DateField
+    from django.db.models.functions import TruncDate
+
+    organization = request.user.organization
+    today = timezone.now().date()
+
+    # Accept year/month params, default to current month
+    try:
+        year = int(request.query_params.get('year', today.year))
+        month = int(request.query_params.get('month', today.month))
+    except (ValueError, TypeError):
+        year, month = today.year, today.month
+
+    month = max(1, min(12, month))
+    first_day = today.replace(year=year, month=month, day=1)
+    last_day = today.replace(year=year, month=month, day=calendar.monthrange(year, month)[1])
+
+    # Distinct (group, date) pairs within the month — each counts as 1 hour for the teacher
+    attendance_qs = (
+        Attendance.objects
+        .filter(organization=organization, date__range=(first_day, last_day))
+        .values('group_id', 'date')
+        .distinct()
+    )
+
+    # Map group_id → teacher
+    group_to_teacher = {
+        g['id']: g
+        for g in Group.objects.filter(organization=organization)
+        .select_related('teacher__user')
+        .values(
+            'id',
+            'teacher_id',
+            'teacher__user__first_name',
+            'teacher__user__last_name',
+            'teacher__user__email',
+        )
+    }
+
+    from collections import defaultdict
+    teacher_hours = defaultdict(lambda: {
+        'classes': set(),
+        'first_name': '',
+        'last_name': '',
+        'email': '',
+        'groups': set(),
+    })
+
+    for row in attendance_qs:
+        group = group_to_teacher.get(row['group_id'])
+        if not group or not group['teacher_id']:
+            continue
+        tid = group['teacher_id']
+        teacher_hours[tid]['first_name'] = group['teacher__user__first_name'] or ''
+        teacher_hours[tid]['last_name'] = group['teacher__user__last_name'] or ''
+        teacher_hours[tid]['email'] = group['teacher__user__email'] or ''
+        teacher_hours[tid]['classes'].add((row['group_id'], row['date']))
+        teacher_hours[tid]['groups'].add(row['group_id'])
+
+    result = []
+    for tid, data in teacher_hours.items():
+        result.append({
+            'teacher_id': str(tid),
+            'full_name': f"{data['first_name']} {data['last_name']}".strip() or data['email'],
+            'email': data['email'],
+            'hours': len(data['classes']),
+            'groups_count': len(data['groups']),
+            'year': year,
+            'month': month,
+        })
+
+    result.sort(key=lambda r: r['full_name'])
+    return Response(result)

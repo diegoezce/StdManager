@@ -161,6 +161,11 @@ class APIClient {
     return response.data
   }
 
+  async getTeachersReport(year: number, month: number) {
+    const response = await this.axiosInstance.get('/reports/teachers/', { params: { year, month } })
+    return response.data
+  }
+
   async getCorporateClients() {
     const response = await this.axiosInstance.get('/corporate-clients/')
     return response.data

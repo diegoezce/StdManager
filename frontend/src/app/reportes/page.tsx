@@ -761,21 +761,134 @@ function LevelsReport() {
   )
 }
 
+// ── Teachers report ───────────────────────────────────────────────────────────
+
+type TeacherRow = {
+  teacher_id: string; full_name: string; email: string
+  hours: number; groups_count: number; year: number; month: number
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+
+function TeachersReport() {
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth() + 1)
+  const [rows, setRows] = useState<TeacherRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    setIsLoading(true)
+    apiClient.getTeachersReport(year, month).then((data) => {
+      setRows(data)
+      setIsLoading(false)
+    }).catch(() => setIsLoading(false))
+  }, [year, month])
+
+  const totalHours = rows.reduce((s, r) => s + r.hours, 0)
+
+  const prevMonth = () => {
+    if (month === 1) { setYear((y) => y - 1); setMonth(12) }
+    else setMonth((m) => m - 1)
+  }
+  const nextMonth = () => {
+    const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
+    if (isCurrentMonth) return
+    if (month === 12) { setYear((y) => y + 1); setMonth(1) }
+    else setMonth((m) => m + 1)
+  }
+  const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
+
+  return (
+    <>
+      {/* Month navigator */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center gap-4 print:hidden">
+        <button onClick={prevMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <span className="text-base font-semibold text-gray-800 min-w-[160px] text-center">
+          {MONTH_NAMES[month - 1]} {year}
+        </span>
+        <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        {[
+          { label: 'Teachers', value: rows.length },
+          { label: 'Total hours', value: totalHours },
+          { label: 'Avg. hours / teacher', value: rows.length > 0 ? Math.round(totalHours / rows.length) : '—' },
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <p className="text-sm text-gray-500 mb-1">{kpi.label}</p>
+            <p className="text-3xl font-bold text-gray-900">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
+      ) : rows.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-400">
+          No attendance records for {MONTH_NAMES[month - 1]} {year}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Groups</th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Hours</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Period</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {rows.map((r) => (
+                  <tr key={r.teacher_id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{r.full_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{r.email}</td>
+                    <td className="px-6 py-4 text-center text-sm text-gray-700">{r.groups_count}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold">{r.hours}h</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{MONTH_NAMES[r.month - 1]} {r.year}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
+            {rows.length} teacher{rows.length !== 1 ? 's' : ''} · {totalHours} total hours · {MONTH_NAMES[month - 1]} {year}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'students' | 'attendance' | 'groups' | 'levels'
+type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers'
 
-const TABS: { value: Tab; label: string; teacherHidden?: boolean }[] = [
+const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: boolean }[] = [
   { value: 'students', label: 'Students', teacherHidden: true },
   { value: 'attendance', label: 'Attendance' },
   { value: 'groups', label: 'Groups', teacherHidden: true },
   { value: 'levels', label: 'Levels', teacherHidden: true },
+  { value: 'teachers', label: 'Teachers', teacherHidden: true, ownerOnly: true },
 ]
 
 export default function ReportesPage() {
   const router = useRouter()
   const { user, me } = useAuth()
   const isTeacher = user?.role === 'teacher'
+  const isOwnerOrManager = user?.role === 'owner' || user?.role === 'manager'
   const [activeTab, setActiveTab] = useState<Tab>(isTeacher ? 'attendance' : 'students')
 
   useEffect(() => {
@@ -789,7 +902,11 @@ export default function ReportesPage() {
     checkAuth()
   }, [user, me, router])
 
-  const visibleTabs = TABS.filter((t) => !(isTeacher && t.teacherHidden))
+  const visibleTabs = TABS.filter((t) => {
+    if (isTeacher && t.teacherHidden) return false
+    if (t.ownerOnly && !isOwnerOrManager) return false
+    return true
+  })
   const today = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })
 
   return (
@@ -832,6 +949,7 @@ export default function ReportesPage() {
           {activeTab === 'attendance' && <AttendanceReport />}
           {activeTab === 'groups' && <GroupsReport />}
           {activeTab === 'levels' && <LevelsReport />}
+          {activeTab === 'teachers' && <TeachersReport />}
         </div>
       </div>
 
