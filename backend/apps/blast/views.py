@@ -479,20 +479,18 @@ def groups_report(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def teachers_report(request):
-    """Hours per teacher for a calendar month. 1 class-day per group = 1 hour."""
-    from apps.core.permissions import IsOwnerOrManager
+    """Hours per teacher for a calendar month. 1 class-day per group = 1 hour.
+    Includes per-day breakdown with group name and attending students."""
     if request.user.role not in ('owner', 'manager', 'super_admin'):
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied()
 
     import calendar
-    from django.db.models import DateField
-    from django.db.models.functions import TruncDate
+    from collections import defaultdict
 
     organization = request.user.organization
     today = timezone.now().date()
 
-    # Accept year/month params, default to current month
     try:
         year = int(request.query_params.get('year', today.year))
         month = int(request.query_params.get('month', today.month))
@@ -503,58 +501,56 @@ def teachers_report(request):
     first_day = today.replace(year=year, month=month, day=1)
     last_day = today.replace(year=year, month=month, day=calendar.monthrange(year, month)[1])
 
-    # Distinct (group, date) pairs within the month — each counts as 1 hour for the teacher
-    attendance_qs = (
+    # Fetch all attendance records for the month with student names
+    records = (
         Attendance.objects
         .filter(organization=organization, date__range=(first_day, last_day))
-        .values('group_id', 'date')
-        .distinct()
+        .select_related('student__user', 'group__teacher__user')
+        .order_by('date', 'group_id')
     )
 
-    # Map group_id → teacher
-    group_to_teacher = {
-        g['id']: g
-        for g in Group.objects.filter(organization=organization)
-        .select_related('teacher__user')
-        .values(
-            'id',
-            'teacher_id',
-            'teacher__user__first_name',
-            'teacher__user__last_name',
-            'teacher__user__email',
-        )
-    }
-
-    from collections import defaultdict
-    teacher_hours = defaultdict(lambda: {
-        'classes': set(),
-        'first_name': '',
-        'last_name': '',
-        'email': '',
-        'groups': set(),
+    # Build per-teacher data: teacher_id → { meta, days: {(group_id, date): {group_name, students}} }
+    teacher_data = defaultdict(lambda: {
+        'first_name': '', 'last_name': '', 'email': '',
+        'days': defaultdict(lambda: {'group_name': '', 'students': []}),
     })
 
-    for row in attendance_qs:
-        group = group_to_teacher.get(row['group_id'])
-        if not group or not group['teacher_id']:
+    for rec in records:
+        group = rec.group
+        if not group or not group.teacher_id:
             continue
-        tid = group['teacher_id']
-        teacher_hours[tid]['first_name'] = group['teacher__user__first_name'] or ''
-        teacher_hours[tid]['last_name'] = group['teacher__user__last_name'] or ''
-        teacher_hours[tid]['email'] = group['teacher__user__email'] or ''
-        teacher_hours[tid]['classes'].add((row['group_id'], row['date']))
-        teacher_hours[tid]['groups'].add(row['group_id'])
+        tid = group.teacher_id
+        td = teacher_data[tid]
+        td['first_name'] = group.teacher.user.first_name or ''
+        td['last_name'] = group.teacher.user.last_name or ''
+        td['email'] = group.teacher.user.email or ''
+        key = (str(group.id), str(rec.date))
+        td['days'][key]['group_name'] = group.name
+        student_name = rec.student.user.get_full_name() or rec.student.user.email
+        if student_name not in td['days'][key]['students']:
+            td['days'][key]['students'].append(student_name)
 
     result = []
-    for tid, data in teacher_hours.items():
+    for tid, data in teacher_data.items():
+        days_list = sorted([
+            {
+                'date': k[1],
+                'group_id': k[0],
+                'group_name': v['group_name'],
+                'students': sorted(v['students']),
+            }
+            for k, v in data['days'].items()
+        ], key=lambda d: (d['date'], d['group_name']))
+
         result.append({
             'teacher_id': str(tid),
             'full_name': f"{data['first_name']} {data['last_name']}".strip() or data['email'],
             'email': data['email'],
-            'hours': len(data['classes']),
-            'groups_count': len(data['groups']),
+            'hours': len(days_list),
+            'groups_count': len({d['group_id'] for d in days_list}),
             'year': year,
             'month': month,
+            'days': days_list,
         })
 
     result.sort(key=lambda r: r['full_name'])

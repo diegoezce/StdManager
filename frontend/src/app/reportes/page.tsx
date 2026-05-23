@@ -763,13 +763,101 @@ function LevelsReport() {
 
 // ── Teachers report ───────────────────────────────────────────────────────────
 
+type TeacherDay = {
+  date: string; group_id: string; group_name: string; students: string[]
+}
+
 type TeacherRow = {
   teacher_id: string; full_name: string; email: string
   hours: number; groups_count: number; year: number; month: number
+  days: TeacherDay[]
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
+
+function TeacherDetailModal({ teacher, onClose }: { teacher: TeacherRow | null; onClose: () => void }) {
+  const isOpen = !!teacher
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen, onClose])
+
+  return (
+    <>
+      <div
+        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+      <div className={`fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        {teacher && (
+          <>
+            <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+              <div className="flex-1 min-w-0 pr-4">
+                <h2 className="text-lg font-semibold text-gray-900 truncate">{teacher.full_name}</h2>
+                <p className="text-sm text-gray-400 truncate">{teacher.email}</p>
+              </div>
+              <button onClick={onClose} className="shrink-0 p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Summary */}
+            <div className="px-6 py-4 border-b border-gray-100 flex gap-6">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Period</p>
+                <p className="text-sm font-semibold text-gray-800">{MONTH_NAMES[teacher.month - 1]} {teacher.year}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Hours</p>
+                <p className="text-2xl font-bold text-indigo-700">{teacher.hours}h</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Groups</p>
+                <p className="text-sm font-semibold text-gray-800">{teacher.groups_count}</p>
+              </div>
+            </div>
+
+            {/* Day list */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {teacher.days.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">No classes recorded</p>
+              ) : (
+                <div className="space-y-3">
+                  {teacher.days.map((day, i) => (
+                    <div key={i} className="border border-gray-100 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-gray-800">
+                            {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </span>
+                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">{day.group_name}</span>
+                        </div>
+                        <span className="text-xs text-gray-400">{day.students.length} student{day.students.length !== 1 ? 's' : ''}</span>
+                      </div>
+                      {day.students.length > 0 && (
+                        <div className="px-4 py-2.5 flex flex-wrap gap-1.5">
+                          {day.students.map((s) => (
+                            <span key={s} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-600">{s}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  )
+}
 
 function TeachersReport() {
   const today = new Date()
@@ -777,6 +865,7 @@ function TeachersReport() {
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [rows, setRows] = useState<TeacherRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherRow | null>(null)
 
   useEffect(() => {
     setIsLoading(true)
@@ -850,7 +939,7 @@ function TeachersReport() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {rows.map((r) => (
-                  <tr key={r.teacher_id} className="hover:bg-gray-50 transition">
+                  <tr key={r.teacher_id} onClick={() => setSelectedTeacher(r)} className="hover:bg-indigo-50/40 cursor-pointer transition">
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">{r.full_name}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{r.email}</td>
                     <td className="px-6 py-4 text-center text-sm text-gray-700">{r.groups_count}</td>
@@ -868,6 +957,8 @@ function TeachersReport() {
           </div>
         </div>
       )}
+
+      <TeacherDetailModal teacher={selectedTeacher} onClose={() => setSelectedTeacher(null)} />
     </>
   )
 }
