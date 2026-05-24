@@ -14,7 +14,8 @@ import { ConfirmModal } from '@/components/ConfirmModal'
 
 export default function GruposPage() {
   const router = useRouter()
-  const { user, me } = useAuth()
+  const { user, me, hasRole } = useAuth()
+  const isReadOnly = !hasRole(['owner', 'manager', 'admin'])
   const [groups, setGroups] = useState<Group[]>([])
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [allStudents, setAllStudents] = useState<Student[]>([])
@@ -72,8 +73,8 @@ export default function GruposPage() {
 
         const [groupsResponse, teachersResponse, studentsResponse] = await Promise.all([
           apiClient.getGroups(),
-          apiClient.getTeachers(),
-          apiClient.getStudents(),
+          isReadOnly ? Promise.resolve([]) : apiClient.getTeachers(),
+          isReadOnly ? Promise.resolve([]) : apiClient.getStudents(),
         ])
 
         setGroups(groupsResponse.results || groupsResponse)
@@ -247,7 +248,7 @@ export default function GruposPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin']}>
+    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'teacher']}>
       <div className="min-h-screen bg-slate-50">
         <Navbar />
 
@@ -257,12 +258,14 @@ export default function GruposPage() {
             title="Grupos"
             subtitle="Crea y administra los grupos de clase."
             actions={
-              <button
-                onClick={() => { setEditingId(null); setShowForm(true) }}
-                className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
-              >
-                + Crear grupo
-              </button>
+              !isReadOnly && (
+                <button
+                  onClick={() => { setEditingId(null); setShowForm(true) }}
+                  className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
+                >
+                  + Crear grupo
+                </button>
+              )
             }
           />
 
@@ -446,13 +449,15 @@ export default function GruposPage() {
                         ).map((enrollment: any) => (
                           <li key={enrollment.id} className="flex items-center justify-between text-sm">
                             <span className="text-gray-700">{enrollment.student_name}</span>
-                            <button
-                              onClick={() => setConfirmUnenroll({ groupId: group.id, studentId: enrollment.student, studentName: enrollment.student_name })}
-                              disabled={unenrolling === enrollment.student}
-                              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 transition ml-2 shrink-0"
-                            >
-                              {unenrolling === enrollment.student ? '...' : 'Remove'}
-                            </button>
+                            {!isReadOnly && (
+                              <button
+                                onClick={() => setConfirmUnenroll({ groupId: group.id, studentId: enrollment.student, studentName: enrollment.student_name })}
+                                disabled={unenrolling === enrollment.student}
+                                className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 transition ml-2 shrink-0"
+                              >
+                                {unenrolling === enrollment.student ? '...' : 'Remove'}
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -469,26 +474,28 @@ export default function GruposPage() {
                     </div>
                   )}
 
-                  <div className="flex gap-2 border-t pt-3">
-                    <button
-                      onClick={() => openEnrollModal(group)}
-                      className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
-                    >
-                      + Enroll
-                    </button>
-                    <button
-                      onClick={() => startEditing(group)}
-                      className="flex-1 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-md text-sm font-medium transition"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDeleteGroup(group.id)}
-                      className="px-4 py-2 bg-white border border-red-300 hover:bg-red-50 text-red-600 rounded-md text-sm font-medium transition"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="flex gap-2 border-t pt-3">
+                      <button
+                        onClick={() => openEnrollModal(group)}
+                        className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition"
+                      >
+                        + Enroll
+                      </button>
+                      <button
+                        onClick={() => startEditing(group)}
+                        className="flex-1 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-md text-sm font-medium transition"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGroup(group.id)}
+                        className="px-4 py-2 bg-white border border-red-300 hover:bg-red-50 text-red-600 rounded-md text-sm font-medium transition"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

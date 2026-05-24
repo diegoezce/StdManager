@@ -27,8 +27,8 @@ export function Navbar() {
   const navItems: { label: string; href: string; roles: string[] }[] = [
     { label: 'Admin', href: '/admin', roles: ['super_admin'] },
     { label: 'Dashboard', href: '/dashboard', roles: ['owner', 'manager', 'admin', 'teacher', 'student', 'corporate_client'] },
-    { label: 'Groups', href: '/grupos', roles: ['owner', 'manager', 'admin'] },
-    { label: 'Students', href: '/estudiantes', roles: ['owner', 'manager', 'admin'] },
+    { label: 'Groups', href: '/grupos', roles: ['owner', 'manager', 'admin', 'teacher'] },
+    { label: 'Students', href: '/estudiantes', roles: ['owner', 'manager', 'admin', 'teacher'] },
     { label: 'Companies', href: '/empresas', roles: ['owner', 'manager', 'admin'] },
     { label: 'Users', href: '/usuarios', roles: ['owner', 'manager'] },
     { label: 'Attendance', href: '/asistencia', roles: ['teacher', 'manager', 'admin', 'owner'] },
@@ -64,11 +64,11 @@ export function Navbar() {
     <nav className="bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center">
+          <div className="flex items-center min-w-0">
+            <Link href="/dashboard" className="flex items-center min-w-0">
               {user.brand_name || user.organization_name ? (
                 <span
-                  className="text-xl text-slate-900 tracking-wide"
+                  className="text-xl text-slate-900 tracking-wide truncate max-w-[160px] sm:max-w-none"
                   style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                 >
                   {user.brand_name || user.organization_name}
@@ -90,7 +90,7 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 md:space-x-3">
+          <div className="flex items-center space-x-2 md:space-x-3 shrink-0">
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor()}`}>
               {user.role}
             </span>

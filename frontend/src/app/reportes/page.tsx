@@ -349,20 +349,20 @@ function StudentsReport() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-gray-100">
                 {([['full_name', 'Student'], ['company', 'Company'], ['english_level', 'Level']] as const).map(([k, label]) => (
-                  <th key={k} onClick={() => toggleSort(k)} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
+                  <th key={k} onClick={() => toggleSort(k)} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
                     {label} <SortIcon k={k} />
                   </th>
                 ))}
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
-                <th onClick={() => toggleSort('attendance_rate')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
+                <th onClick={() => toggleSort('attendance_rate')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">
                   Attendance <SortIcon k="attendance_rate" />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -370,27 +370,27 @@ function StudentsReport() {
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-gray-400 text-sm">No students to display</td></tr>
               ) : filtered.map((s) => (
                 <tr key={s.id} onClick={() => setDrawerStudent(s)} className={`hover:bg-indigo-50/40 cursor-pointer transition ${!s.is_active ? 'opacity-60' : ''}`}>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <p className="font-medium text-gray-900 text-sm">{s.full_name}</p>
                     <p className="text-xs text-gray-400">{s.email}</p>
                     {mondlyData[s.email?.toLowerCase() ?? ''] && (
                       <div className="mt-1"><MondlyBadge entries={mondlyData[s.email?.toLowerCase() ?? ''] ?? []} /></div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{s.company ?? <span className="text-gray-300">—</span>}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{s.company ?? <span className="text-gray-300">—</span>}</td>
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[s.english_level] ?? 'bg-gray-100 text-gray-700'}`}>
                       {LEVEL_LABEL_SHORT[s.english_level] ?? s.english_level}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">
                     {s.current_groups.length > 0 ? s.current_groups.join(', ') : <span className="text-gray-300">—</span>}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <AttendanceBar rate={s.attendance_rate} />
                     {s.total_sessions > 0 && <p className="text-xs text-gray-400 mt-0.5">{s.total_sessions} classes</p>}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-3 sm:px-6 sm:py-4">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${s.is_active ? 'bg-green-500' : 'bg-gray-400'}`} />
                       {s.is_active ? 'Active' : 'Inactive'}
@@ -510,18 +510,18 @@ function AttendanceReport() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th onClick={() => toggleSort('student_name')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Student <SortIcon k="student_name" /></th>
-                    <th onClick={() => toggleSort('company')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Company <SortIcon k="company" /></th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
-                    <th onClick={() => toggleSort('total')} className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Classes <SortIcon k="total" /></th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Present</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Absent</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Late</th>
-                    <th onClick={() => toggleSort('rate')} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Rate <SortIcon k="rate" /></th>
+                    <th onClick={() => toggleSort('student_name')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Student <SortIcon k="student_name" /></th>
+                    <th onClick={() => toggleSort('company')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Company <SortIcon k="company" /></th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
+                    <th onClick={() => toggleSort('total')} className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Classes <SortIcon k="total" /></th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Present</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Absent</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Late</th>
+                    <th onClick={() => toggleSort('rate')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Rate <SortIcon k="rate" /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -529,14 +529,14 @@ function AttendanceReport() {
                     <tr><td colSpan={8} className="px-6 py-10 text-center text-gray-400 text-sm">No attendance records for this period</td></tr>
                   ) : filtered.map((r) => (
                     <tr key={r.student_id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.student_name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{r.company ?? <span className="text-gray-300">—</span>}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{r.groups.join(', ') || <span className="text-gray-300">—</span>}</td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-700">{r.total}</td>
-                      <td className="px-6 py-4 text-center"><Pill count={r.present} color="bg-green-100 text-green-700" /></td>
-                      <td className="px-6 py-4 text-center"><Pill count={r.absent} color="bg-red-100 text-red-700" /></td>
-                      <td className="px-6 py-4 text-center"><Pill count={r.late} color="bg-yellow-100 text-yellow-700" /></td>
-                      <td className="px-6 py-4"><AttendanceBar rate={r.rate} /></td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm font-medium text-gray-900">{r.student_name}</td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{r.company ?? <span className="text-gray-300">—</span>}</td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{r.groups.join(', ') || <span className="text-gray-300">—</span>}</td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center text-sm text-gray-700">{r.total}</td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.present} color="bg-green-100 text-green-700" /></td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.absent} color="bg-red-100 text-red-700" /></td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.late} color="bg-yellow-100 text-yellow-700" /></td>
+                      <td className="px-3 py-3 sm:px-6 sm:py-4"><AttendanceBar rate={r.rate} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -634,16 +634,16 @@ function GroupsReport() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Level</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Enrolled</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Capacity</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Level</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Enrolled</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Capacity</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -654,16 +654,16 @@ function GroupsReport() {
                 const barColor = pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-green-400'
                 return (
                   <tr key={g.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{g.name}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm font-medium text-gray-900">{g.name}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[g.level] ?? 'bg-gray-100 text-gray-700'}`}>
                         {LEVEL_LABEL_SHORT[g.level] ?? g.level}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">
                       {[g.teacher__user__first_name, g.teacher__user__last_name].filter(Boolean).join(' ') || <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-20 bg-gray-100 rounded-full h-2">
                           <div className={`${barColor} h-2 rounded-full`} style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -671,8 +671,8 @@ function GroupsReport() {
                         <span className="text-sm text-gray-700">{g.student_count}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{g.max_students}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{g.max_students}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${g.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                         {g.status}
                       </span>
@@ -788,7 +788,7 @@ function LevelsReport() {
       <div className="space-y-4">
         {[...byLevel].sort((a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level)).map((row) => (
           <details key={row.level} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <summary className="px-6 py-4 cursor-pointer flex items-center justify-between hover:bg-gray-50 transition list-none">
+            <summary className="px-3 py-3 sm:px-6 sm:py-4 cursor-pointer flex items-center justify-between hover:bg-gray-50 transition list-none">
               <div className="flex items-center gap-3">
                 <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${LEVEL_COLOR[row.level]}`}>
                   {LEVEL_LABEL_SHORT[row.level]}
@@ -868,7 +868,7 @@ function TeacherDetailModal({ teacher, onClose }: { teacher: TeacherRow | null; 
             </div>
 
             {/* Summary */}
-            <div className="px-6 py-4 border-b border-gray-100 flex gap-6">
+            <div className="px-3 py-3 sm:px-6 sm:py-4 border-b border-gray-100 flex gap-6">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Period</p>
                 <p className="text-sm font-semibold text-gray-800">{MONTH_NAMES[teacher.month - 1]} {teacher.year}</p>
@@ -986,27 +986,27 @@ function TeachersReport() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-gray-100">
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Groups</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Hours</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Period</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Groups</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Hours</th>
+                  <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Period</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {rows.map((r) => (
                   <tr key={r.teacher_id} onClick={() => setSelectedTeacher(r)} className="hover:bg-indigo-50/40 cursor-pointer transition">
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{r.full_name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{r.email}</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-700">{r.groups_count}</td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm font-semibold text-gray-900">{r.full_name}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-500">{r.email}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-center text-sm text-gray-700">{r.groups_count}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-center">
                       <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold">{r.hours}h</span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{MONTH_NAMES[r.month - 1]} {r.year}</td>
+                    <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-500">{MONTH_NAMES[r.month - 1]} {r.year}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1087,7 +1087,7 @@ function MondlyTable({ rows, isCorporate }: { rows: MondlyRow[]; isCorporate: bo
         />
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
           <table className="min-w-full">
             <thead>
               <tr className="border-b border-gray-100">

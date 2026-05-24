@@ -61,6 +61,12 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Student.objects.filter(organization=user.organization)
         elif user.role == 'student':
             return Student.objects.filter(user=user)
+        elif user.role == 'teacher':
+            return Student.objects.filter(
+                enrollments__group__teacher__user=user,
+                enrollments__status='active',
+                organization=user.organization,
+            ).distinct()
         elif user.role == 'corporate_client':
             if user.corporate_client_id:
                 return Student.objects.filter(corporate_client_id=user.corporate_client_id)
@@ -710,8 +716,12 @@ def mondly_data(request):
     organization = request.user.organization
     records = MondlyRecord.objects.filter(organization=organization).order_by('email', 'language')
 
+    # Students only see their own record
+    if request.user.role == 'student':
+        records = records.filter(email=request.user.email.lower())
+
     # Corporate clients: filter to their students only
-    if request.user.role == 'corporate_client':
+    elif request.user.role == 'corporate_client':
         if request.user.corporate_client_id:
             cc_emails = set(
                 Student.objects.filter(

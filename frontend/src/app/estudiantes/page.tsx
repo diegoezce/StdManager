@@ -204,7 +204,7 @@ export default function EstudiantesPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client']}>
+    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin', 'corporate_client', 'teacher']}>
       <div className="min-h-screen bg-slate-50">
         <Navbar />
 

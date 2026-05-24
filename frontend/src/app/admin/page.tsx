@@ -295,6 +295,7 @@ export default function AdminPage() {
 
           {/* Orgs table */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -359,6 +360,7 @@ export default function AdminPage() {
                 })}
               </tbody>
             </table>
+            </div>
             {orgs.length === 0 && (
               <div className="p-8 text-center text-gray-500 text-sm">
                 No hay organizaciones registradas.

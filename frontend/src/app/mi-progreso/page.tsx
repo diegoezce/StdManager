@@ -12,6 +12,7 @@ export default function MiProgresoPage() {
   const router = useRouter()
   const { user, me } = useAuth()
   const [progress, setProgress] = useState<any>(null)
+  const [mondlyRecords, setMondlyRecords] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -33,8 +34,14 @@ export default function MiProgresoPage() {
       try {
         if (!user) return
 
-        const progress = await apiClient.getStudentProgress(user.id)
-        setProgress(progress)
+        const [progressData, mondlyData] = await Promise.all([
+          apiClient.getStudentProgress(user.id),
+          apiClient.getMondlyData().catch(() => ({})),
+        ])
+        setProgress(progressData)
+        const email = user.email?.toLowerCase()
+        const records = email && mondlyData[email] ? mondlyData[email] : []
+        setMondlyRecords(records)
       } catch (error) {
         console.error('Failed to load progress:', error)
       } finally {
@@ -126,6 +133,53 @@ export default function MiProgresoPage() {
                           Issued: {new Date(cert.issue_date).toLocaleDateString()}
                         </p>
                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mondly */}
+          {mondlyRecords.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Mondly</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {mondlyRecords.map((r: any, i: number) => (
+                  <div key={i} className="bg-white shadow rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-700">{r.language}</span>
+                      {r.level && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">{r.level}</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-gray-500 text-xs">Points</p>
+                        <p className="font-semibold text-gray-800">{r.points?.toLocaleString() ?? '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Best streak</p>
+                        <p className="font-semibold text-gray-800">{r.best_streak ?? '—'} days</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Lessons</p>
+                        <p className="font-semibold text-gray-800">{r.lessons_completed ?? '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Words learned</p>
+                        <p className="font-semibold text-gray-800">{r.words_learned ?? '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 text-xs">Minutes</p>
+                        <p className="font-semibold text-gray-800">{r.learning_minutes ?? '—'}</p>
+                      </div>
+                      {r.last_active_on && (
+                        <div>
+                          <p className="text-gray-500 text-xs">Last active</p>
+                          <p className="font-semibold text-gray-800">{new Date(r.last_active_on).toLocaleDateString()}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

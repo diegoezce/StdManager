@@ -213,14 +213,14 @@ export default function GroupDetailsPage() {
               <div className="px-4 py-5 sm:p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Attendance History</h2>
                 {attendance.length > 0 ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Date
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Status
                           </th>
                         </tr>
@@ -228,10 +228,10 @@ export default function GroupDetailsPage() {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {attendance.map((record) => (
                           <tr key={record.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
                               {new Date(record.date).toLocaleDateString()}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   record.status === 'present'
@@ -262,17 +262,17 @@ export default function GroupDetailsPage() {
               <div className="px-4 py-5 sm:p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Evaluations</h2>
                 {evaluations.length > 0 ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_85%,transparent)] sm:[mask-image:none]">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Type
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Score
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase">
                             Percentage
                           </th>
                         </tr>
@@ -280,13 +280,13 @@ export default function GroupDetailsPage() {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {evaluations.map((evaluation) => (
                           <tr key={evaluation.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
                               {evaluation.type}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm text-gray-900">
                               {evaluation.score}/{evaluation.max_score}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <td className="px-3 py-3 sm:px-6 sm:py-4 whitespace-nowrap text-sm font-medium">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs ${
                                   evaluation.percentage >= 80
