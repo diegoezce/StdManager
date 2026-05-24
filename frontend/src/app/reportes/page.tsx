@@ -1406,20 +1406,22 @@ export default function ReportesPage() {
             }
           />
 
-          <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-1 w-fit print:hidden">
-            {visibleTabs.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value)}
-                className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-                  activeTab === tab.value
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="overflow-x-auto mb-6 print:hidden [mask-image:linear-gradient(to_right,black_88%,transparent)] sm:[mask-image:none]">
+            <div className="flex gap-1 bg-white rounded-xl shadow-sm border border-gray-100 p-1 w-max">
+              {visibleTabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
+                    activeTab === tab.value
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {activeTab === 'students' && <StudentsReport />}
