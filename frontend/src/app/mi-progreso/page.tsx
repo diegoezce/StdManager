@@ -40,7 +40,8 @@ export default function MiProgresoPage() {
         ])
         setProgress(progressData)
         const email = user.email?.toLowerCase()
-        const records = email && mondlyData[email] ? mondlyData[email] : []
+        const mondlyMap = mondlyData as Record<string, any[]>
+        const records = email && mondlyMap[email] ? mondlyMap[email] : []
         setMondlyRecords(records)
       } catch (error) {
         console.error('Failed to load progress:', error)
