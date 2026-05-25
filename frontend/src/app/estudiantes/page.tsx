@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
+import { Select } from '@/components/Select'
 
 const LEVEL_LABEL: Record<string, string> = {
   beginner: 'A1',
@@ -474,31 +475,30 @@ export default function EstudiantesPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nivel de inglés</label>
-                    <select
+                    <Select
                       value={editData.english_level}
-                      onChange={(e) => setEditData({ ...editData, english_level: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                    >
-                      <option value="beginner">A1 – Beginner</option>
-                      <option value="elementary">A2 – Elementary</option>
-                      <option value="pre-intermediate">B1 – Pre-Intermediate</option>
-                      <option value="intermediate">B1+ – Intermediate</option>
-                      <option value="upper-intermediate">B2 – Upper Intermediate</option>
-                      <option value="advanced">C1 – Advanced</option>
-                    </select>
+                      onChange={(val) => setEditData({ ...editData, english_level: val as any })}
+                      options={[
+                        { value: 'beginner', label: 'A1 – Beginner' },
+                        { value: 'elementary', label: 'A2 – Elementary' },
+                        { value: 'pre-intermediate', label: 'B1 – Pre-Intermediate' },
+                        { value: 'intermediate', label: 'B1+ – Intermediate' },
+                        { value: 'upper-intermediate', label: 'B2 – Upper Intermediate' },
+                        { value: 'advanced', label: 'C1 – Advanced' },
+                      ]}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
-                    <select
+                    <Select
                       value={editData.corporate_client || ''}
-                      onChange={(e) => setEditData({ ...editData, corporate_client: e.target.value || null })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                    >
-                      <option value="">Sin empresa</option>
-                      {corporateClients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.company_name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setEditData({ ...editData, corporate_client: val || null })}
+                      placeholder="Sin empresa"
+                      options={[
+                        { value: '', label: 'Sin empresa' },
+                        ...corporateClients.map((c) => ({ value: c.id, label: c.company_name })),
+                      ]}
+                    />
                   </div>
                   <div className="flex gap-2 pt-2">
                     <button type="submit" disabled={isSaving}
@@ -518,20 +518,14 @@ export default function EstudiantesPage() {
               {drawerMode === 'enroll' && (
                 <div className="space-y-4">
                   <p className="text-sm font-semibold text-gray-700">Inscribir en grupo</p>
-                  <select
+                  <Select
                     value={enrollGroupId}
-                    onChange={(e) => setEnrollGroupId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">Seleccionar grupo...</option>
-                    {groups
+                    onChange={(val) => setEnrollGroupId(val)}
+                    placeholder="Seleccionar grupo..."
+                    options={groups
                       .filter((g) => g.available_spots > 0)
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name} ({g.available_spots} lugares)
-                        </option>
-                      ))}
-                  </select>
+                      .map((g) => ({ value: g.id, label: `${g.name} (${g.available_spots} lugares)` }))}
+                  />
                   <div className="flex gap-2">
                     <button
                       onClick={handleEnrollStudent}

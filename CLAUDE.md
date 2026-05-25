@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**GoPlanify** — multi-tenant SaaS platform for educational institutions (English language schools). The product name is GoPlanify; the repo directory is StudentManager.
+**BLEST** — multi-tenant SaaS platform for educational institutions (English language schools). The product name is BLEST; the repo directory is StudentManager.
 
 ## Commands
 

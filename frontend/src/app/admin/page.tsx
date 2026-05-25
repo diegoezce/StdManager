@@ -7,6 +7,7 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
+import { Select } from '@/components/Select'
 
 interface License {
   type: string
@@ -376,15 +377,12 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Cambiar estado</h3>
             <p className="text-sm text-gray-500 mb-4">{statusTarget.name}</p>
-            <select
+            <Select
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
+              onChange={(val) => setNewStatus(val)}
+              options={Object.entries(STATUS_LABELS).map(([val, { label }]) => ({ value: val, label }))}
+              className="mb-4"
+            />
             <div className="flex gap-2">
               <button
                 onClick={handleUpdateStatus}
@@ -414,27 +412,23 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Plan</label>
-                  <select
+                  <Select
                     value={licenseForm.type}
-                    onChange={(e) => setLicenseForm({ ...licenseForm, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {Object.entries(PLAN_LABELS).map(([val, label]) => (
-                      <option key={val} value={val}>{label}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setLicenseForm({ ...licenseForm, type: val })}
+                    options={Object.entries(PLAN_LABELS).map(([val, label]) => ({ value: val, label }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Estado licencia</label>
-                  <select
+                  <Select
                     value={licenseForm.status}
-                    onChange={(e) => setLicenseForm({ ...licenseForm, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="active">Activa</option>
-                    <option value="expired">Expirada</option>
-                    <option value="suspended">Suspendida</option>
-                  </select>
+                    onChange={(val) => setLicenseForm({ ...licenseForm, status: val })}
+                    options={[
+                      { value: 'active', label: 'Activa' },
+                      { value: 'expired', label: 'Expirada' },
+                      { value: 'suspended', label: 'Suspendida' },
+                    ]}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
@@ -530,15 +524,11 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Estado inicial</label>
-                  <select
+                  <Select
                     value={createForm.status}
-                    onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
-                      <option key={val} value={val}>{label}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setCreateForm({ ...createForm, status: val })}
+                    options={Object.entries(STATUS_LABELS).map(([val, { label }]) => ({ value: val, label }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Máx. usuarios</label>
@@ -606,15 +596,11 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Estado</label>
-                  <select
+                  <Select
                     value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
-                      <option key={val} value={val}>{label}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setEditForm({ ...editForm, status: val })}
+                    options={Object.entries(STATUS_LABELS).map(([val, { label }]) => ({ value: val, label }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Máx. usuarios</label>

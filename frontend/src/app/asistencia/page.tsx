@@ -10,6 +10,7 @@ import { Navbar } from '@/components/Navbar'
 import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ConfirmModal } from '@/components/ConfirmModal'
+import { Select } from '@/components/Select'
 
 export default function AttendancePage() {
   const router = useRouter()
@@ -175,33 +176,29 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* Group Selection */}
-          <div className="bg-white rounded-lg shadow mb-6 p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Group</label>
-            <select
-              value={selectedGroup?.id || ''}
-              onChange={(e) => {
-                const group = groups.find((g) => g.id === e.target.value)
-                setSelectedGroup(group || null)
-                setHasExisting(false)
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>{group.name} ({group.level})</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Date Selection */}
-          <div className="bg-white rounded-lg shadow mb-6 p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+          {/* Group + Date Selection */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-4 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Grupo</label>
+              <Select
+                value={selectedGroup?.id || ''}
+                onChange={(val) => {
+                  const group = groups.find((g) => g.id === val)
+                  setSelectedGroup(group || null)
+                  setHasExisting(false)
+                }}
+                options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.level})` }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Fecha</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           {/* Existing attendance warning */}
@@ -228,38 +225,40 @@ export default function AttendancePage() {
             {enrollments.length > 0 ? (
               <>
                 {enrollments.map((enrollment) => (
-                  <div key={enrollment.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between hover:shadow-md transition">
+                  <div key={enrollment.id} className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-3 flex items-center justify-between hover:shadow-md transition">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">{enrollment.student_name}</p>
+                      <p className="text-sm font-semibold text-gray-900">{enrollment.student_name}</p>
                     </div>
-                    <select
+                    <Select
+                      size="sm"
                       value={attendance[enrollment.id] || 'present'}
-                      onChange={(e) => handleAttendanceChange(enrollment.id, e.target.value)}
-                      className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="present">✓ Present</option>
-                      <option value="absent">✗ Absent</option>
-                      <option value="late">⏰ Late</option>
-                      <option value="excused">📋 Excused</option>
-                    </select>
+                      onChange={(val) => handleAttendanceChange(enrollment.id, val)}
+                      options={[
+                        { value: 'present', label: '✓ Present' },
+                        { value: 'absent',  label: '✗ Absent' },
+                        { value: 'late',    label: '⏰ Late' },
+                        { value: 'excused', label: '📋 Excused' },
+                      ]}
+                      className="w-36"
+                    />
                   </div>
                 ))}
 
                 {/* Save Button */}
-                <div className="bg-white rounded-lg shadow p-4 mt-8">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 px-4 py-3 mt-4">
                   <button
                     onClick={handleSaveClick}
                     disabled={isSaving}
-                    className={`w-full disabled:opacity-50 text-white font-bold py-3 px-4 rounded-lg transition ${hasExisting ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`}
+                    className={`w-full disabled:opacity-50 text-white font-medium text-sm py-2 px-4 rounded-md transition ${hasExisting ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`}
                   >
                     {isSaving ? '⏳ Saving...' : hasExisting ? '⚠ Overwrite Attendance' : '✓ Save Attendance'}
                   </button>
                 </div>
               </>
             ) : (
-              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-                <p className="text-lg mb-2">No students enrolled</p>
-                <p className="text-sm">This group has no students yet</p>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                <p className="text-sm font-medium mb-1">No hay estudiantes inscriptos</p>
+                <p className="text-xs">Este grupo no tiene estudiantes todavía</p>
               </div>
             )}
           </div>

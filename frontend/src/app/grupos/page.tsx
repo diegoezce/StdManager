@@ -11,6 +11,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
 import { ConfirmModal } from '@/components/ConfirmModal'
+import { Select } from '@/components/Select'
 
 export default function GruposPage() {
   const router = useRouter()
@@ -290,54 +291,41 @@ export default function GruposPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nivel
-                  </label>
-                  <select
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nivel</label>
+                  <Select
                     value={formData.level}
-                    onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="elementary">Elementary</option>
-                    <option value="pre-intermediate">Pre-Intermediate</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="upper-intermediate">Upper Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, level: val })}
+                    options={[
+                      { value: 'beginner', label: 'Beginner' },
+                      { value: 'elementary', label: 'Elementary' },
+                      { value: 'pre-intermediate', label: 'Pre-Intermediate' },
+                      { value: 'intermediate', label: 'Intermediate' },
+                      { value: 'upper-intermediate', label: 'Upper Intermediate' },
+                      { value: 'advanced', label: 'Advanced' },
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Estado
-                  </label>
-                  <select
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                  <Select
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="planning">Planning</option>
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, status: val })}
+                    options={[
+                      { value: 'planning', label: 'Planning' },
+                      { value: 'active', label: 'Active' },
+                      { value: 'completed', label: 'Completed' },
+                      { value: 'cancelled', label: 'Cancelled' },
+                    ]}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Profesor
-                  </label>
-                  <select
-                    required
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Profesor</label>
+                  <Select
                     value={formData.teacher}
-                    onChange={(e) => setFormData({ ...formData, teacher: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">Seleccionar profesor</option>
-                    {teachers.map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.user_name} ({teacher.user_email})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, teacher: val })}
+                    placeholder="Seleccionar profesor"
+                    options={teachers.map((t) => ({ value: t.id, label: `${t.user_name} (${t.user_email})` }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

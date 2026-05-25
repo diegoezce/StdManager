@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 import { Modal } from '@/components/Modal'
+import { Select } from '@/components/Select'
 
 const ROLE_BADGE: Record<string, string> = {
   owner:            'bg-red-100 text-red-800',
@@ -364,31 +365,21 @@ export default function UsuariosPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                  <select
-                    required
+                  <Select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any, corporate_client: '' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    {ROLES.map((role) => (
-                      <option key={role.value} value={role.value}>{role.label}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, role: val as any, corporate_client: '' })}
+                    options={ROLES.map((r) => ({ value: r.value, label: r.label }))}
+                  />
                 </div>
                 {formData.role === 'corporate_client' && (
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
-                    <select
-                      required
+                    <Select
                       value={formData.corporate_client}
-                      onChange={(e) => setFormData({ ...formData, corporate_client: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">-- Seleccionar empresa --</option>
-                      {corporateClients.map((c: any) => (
-                        <option key={c.id} value={c.id}>{c.company_name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, corporate_client: val })}
+                      placeholder="-- Seleccionar empresa --"
+                      options={corporateClients.map((c: any) => ({ value: c.id, label: c.company_name }))}
+                    />
                   </div>
                 )}
                 {!editingId && (
@@ -470,15 +461,13 @@ export default function UsuariosPage() {
                           <span className="font-medium">Rol:</span>
                           {changingRoleFor === u.id ? (
                             <div className="flex items-center gap-1">
-                              <select
+                              <Select
+                                size="sm"
                                 value={pendingRole}
-                                onChange={(e) => setPendingRole(e.target.value)}
-                                className="px-2 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              >
-                                {assignableRoles.map((r) => (
-                                  <option key={r.value} value={r.value}>{r.label}</option>
-                                ))}
-                              </select>
+                                onChange={(val) => setPendingRole(val)}
+                                options={assignableRoles.map((r) => ({ value: r.value, label: r.label }))}
+                                className="w-36"
+                              />
                               <button
                                 onClick={() => handleSaveRole(u.id)}
                                 disabled={isSavingRole}
@@ -645,18 +634,14 @@ export default function UsuariosPage() {
           <p className="text-xs text-amber-600 font-medium">Esta acción no se puede deshacer fácilmente.</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar nuevo owner</label>
-            <select
+            <Select
               value={transferTargetId}
-              onChange={(e) => setTransferTargetId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              <option value="">-- Elige un usuario --</option>
-              {users.filter((u) => u.id !== user?.id && u.role !== 'super_admin').map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.first_name} {u.last_name} ({u.email}) — {u.role}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setTransferTargetId(val)}
+              placeholder="-- Elige un usuario --"
+              options={users
+                .filter((u) => u.id !== user?.id && u.role !== 'super_admin')
+                .map((u) => ({ value: u.id, label: `${u.first_name} ${u.last_name} (${u.email}) — ${u.role}` }))}
+            />
           </div>
           <div className="flex gap-2 pt-2">
             <button onClick={handleTransferOwnership} disabled={isTransferring || !transferTargetId}
