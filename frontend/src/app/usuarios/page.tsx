@@ -450,15 +450,15 @@ export default function UsuariosPage() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900">
+                      <h3 className="text-base font-semibold text-gray-900">
                         {u.first_name} {u.last_name}
                       </h3>
-                      <div className="space-y-1.5 text-sm text-gray-600 mt-2">
-                        <p>
-                          <span className="font-medium">Email:</span> {u.email}
+                      <div className="space-y-1 mt-1.5">
+                        <p className="text-sm text-gray-700">
+                          <span className="text-xs text-gray-400 uppercase tracking-wide mr-1">Email</span>{u.email}
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">Rol:</span>
+                          <span className="text-xs text-gray-400 uppercase tracking-wide">Rol</span>
                           {changingRoleFor === u.id ? (
                             <div className="flex items-center gap-1">
                               <Select
@@ -496,13 +496,13 @@ export default function UsuariosPage() {
                           )}
                         </div>
                         {u.role === 'corporate_client' && u.corporate_client && (
-                          <p>
-                            <span className="font-medium">Empresa:</span>{' '}
+                          <p className="text-sm text-gray-700">
+                            <span className="text-xs text-gray-400 uppercase tracking-wide mr-1">Empresa</span>
                             {corporateClients.find((c: any) => c.id === u.corporate_client)?.company_name || u.corporate_client}
                           </p>
                         )}
-                        <p>
-                          <span className="font-medium">Estado:</span>{' '}
+                        <p className="flex items-center gap-1.5">
+                          <span className="text-xs text-gray-400 uppercase tracking-wide">Estado</span>
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'

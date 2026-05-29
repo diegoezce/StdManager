@@ -18,7 +18,7 @@ export function PageHeader({ title, subtitle, eyebrow, actions, className = '' }
           </p>
         )}
         <h1
-          className="text-3xl text-slate-900 leading-tight"
+          className="text-2xl text-slate-900 leading-tight"
           style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
         >
           {title}
