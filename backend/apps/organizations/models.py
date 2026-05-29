@@ -19,6 +19,7 @@ class Organization(BaseModel):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trial')
     max_users = models.IntegerField(default=100)
     is_active = models.BooleanField(default=True)
+    empty_class_rate = models.DecimalField(max_digits=4, decimal_places=2, default=0.50)
 
     class Meta:
         ordering = ['-created_at']

@@ -254,6 +254,24 @@ class Evaluation(OrganizationMixin, AuditMixin, BaseModel):
         return 0
 
 
+class EmptyClassSession(OrganizationMixin, BaseModel):
+    """Marks a day where the teacher held class but no students attended."""
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='empty_sessions'
+    )
+    date = models.DateField()
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('organization', 'group', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.group.name} — {self.date} (empty)"
+
+
 class Certificate(OrganizationMixin, BaseModel):
     student = models.ForeignKey(
         Student,

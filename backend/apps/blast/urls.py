@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CorporateClientViewSet, TeacherViewSet, StudentViewSet,
     GroupViewSet, EnrollmentViewSet, AttendanceViewSet,
-    EvaluationViewSet, CertificateViewSet,
+    EvaluationViewSet, CertificateViewSet, EmptyClassSessionViewSet,
     attendance_report, students_report, groups_report, teachers_report,
     mondly_import, mondly_data,
 )
@@ -17,6 +17,7 @@ router.register(r'enrollments', EnrollmentViewSet, basename='enrollment')
 router.register(r'attendance', AttendanceViewSet, basename='attendance')
 router.register(r'evaluations', EvaluationViewSet, basename='evaluation')
 router.register(r'certificates', CertificateViewSet, basename='certificate')
+router.register(r'empty-sessions', EmptyClassSessionViewSet, basename='empty-session')
 
 urlpatterns = [
     path('', include(router.urls)),

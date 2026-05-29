@@ -10,12 +10,13 @@ logger = logging.getLogger(__name__)
 
 from .models import (
     CorporateClient, Teacher, Student, Group, Enrollment,
-    Attendance, Evaluation, Certificate, MondlyRecord
+    Attendance, Evaluation, Certificate, MondlyRecord, EmptyClassSession
 )
 from .serializers import (
     CorporateClientSerializer, TeacherSerializer, StudentSerializer,
     GroupSerializer, EnrollmentSerializer, AttendanceSerializer,
-    AttendanceBulkSerializer, EvaluationSerializer, CertificateSerializer
+    AttendanceBulkSerializer, EvaluationSerializer, CertificateSerializer,
+    EmptyClassSessionSerializer
 )
 from apps.core.permissions import IsOwnerOrManager, IsAdmin, IsTeacher
 
@@ -365,6 +366,24 @@ class CertificateViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Certificate generated'})
 
 
+class EmptyClassSessionViewSet(viewsets.ModelViewSet):
+    serializer_class = EmptyClassSessionSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def get_queryset(self):
+        qs = EmptyClassSession.objects.filter(organization=self.request.user.organization)
+        group = self.request.query_params.get('group')
+        date = self.request.query_params.get('date')
+        if group:
+            qs = qs.filter(group_id=group)
+        if date:
+            qs = qs.filter(date=date)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.user.organization, created_by=self.request.user)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def attendance_report(request):
@@ -509,8 +528,8 @@ def groups_report(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def teachers_report(request):
-    """Hours per teacher for a calendar month. 1 class-day per group = 1 hour.
-    Includes per-day breakdown with group name and attending students."""
+    """Hours per teacher for a calendar month.
+    Full class day = 1h. Empty class session = org.empty_class_rate hours."""
     if request.user.role not in ('owner', 'manager', 'super_admin'):
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied()
@@ -519,6 +538,7 @@ def teachers_report(request):
     from collections import defaultdict
 
     organization = request.user.organization
+    empty_class_rate = float(organization.empty_class_rate)
     today = timezone.now().date()
 
     try:
@@ -539,10 +559,17 @@ def teachers_report(request):
         .order_by('date', 'group_id')
     )
 
-    # Build per-teacher data: teacher_id → { meta, days: {(group_id, date): {group_name, students}} }
+    # Fetch empty class sessions for the month
+    empty_sessions = (
+        EmptyClassSession.objects
+        .filter(organization=organization, date__range=(first_day, last_day))
+        .select_related('group__teacher__user')
+    )
+
+    # Build per-teacher data: teacher_id → { meta, days: {(group_id, date): {group_name, students, is_empty}} }
     teacher_data = defaultdict(lambda: {
         'first_name': '', 'last_name': '', 'email': '',
-        'days': defaultdict(lambda: {'group_name': '', 'students': []}),
+        'days': defaultdict(lambda: {'group_name': '', 'students': [], 'is_empty': False}),
     })
 
     for rec in records:
@@ -560,6 +587,21 @@ def teachers_report(request):
         if student_name not in td['days'][key]['students']:
             td['days'][key]['students'].append(student_name)
 
+    for es in empty_sessions:
+        group = es.group
+        if not group or not group.teacher_id:
+            continue
+        tid = group.teacher_id
+        td = teacher_data[tid]
+        td['first_name'] = group.teacher.user.first_name or ''
+        td['last_name'] = group.teacher.user.last_name or ''
+        td['email'] = group.teacher.user.email or ''
+        key = (str(group.id), str(es.date))
+        # Only add as empty if no regular attendance exists for this slot
+        if key not in td['days']:
+            td['days'][key]['group_name'] = group.name
+            td['days'][key]['is_empty'] = True
+
     result = []
     for tid, data in teacher_data.items():
         days_list = sorted([
@@ -568,15 +610,23 @@ def teachers_report(request):
                 'group_id': k[0],
                 'group_name': v['group_name'],
                 'students': sorted(v['students']),
+                'is_empty': v['is_empty'],
             }
             for k, v in data['days'].items()
         ], key=lambda d: (d['date'], d['group_name']))
+
+        full_days = sum(1 for d in days_list if not d['is_empty'])
+        empty_days = sum(1 for d in days_list if d['is_empty'])
+        hours = round(full_days + empty_days * empty_class_rate, 2)
 
         result.append({
             'teacher_id': str(tid),
             'full_name': f"{data['first_name']} {data['last_name']}".strip() or data['email'],
             'email': data['email'],
-            'hours': len(days_list),
+            'hours': hours,
+            'full_days': full_days,
+            'empty_days': empty_days,
+            'empty_class_rate': empty_class_rate,
             'groups_count': len({d['group_id'] for d in days_list}),
             'year': year,
             'month': month,

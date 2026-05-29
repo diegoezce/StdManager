@@ -47,7 +47,7 @@ class OrganizationSummarySerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'brand_name', 'slug', 'license_number', 'status',
             'max_users', 'is_active', 'license', 'user_count', 'student_count',
-            'teacher_count', 'group_count', 'owner_email', 'created_at',
+            'teacher_count', 'group_count', 'owner_email', 'empty_class_rate', 'created_at',
         )
         read_only_fields = ('id', 'slug', 'created_at')
 
@@ -59,7 +59,7 @@ class OrganizationSummarySerializer(serializers.ModelSerializer):
 class OrganizationCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ('name', 'brand_name', 'license_number', 'status', 'max_users', 'is_active')
+        fields = ('name', 'brand_name', 'license_number', 'status', 'max_users', 'is_active', 'empty_class_rate')
 
 
 class TransferOwnershipSerializer(serializers.Serializer):

@@ -58,6 +58,11 @@ class APIClient {
     return response.data
   }
 
+  async getOrganization(slug: string) {
+    const response = await this.axiosInstance.get(`/organizations/${slug}/`)
+    return response.data
+  }
+
   async getGroups(orgSlug?: string) {
     const response = await this.axiosInstance.get('/groups/', {
       params: orgSlug ? { organization: orgSlug } : {},
@@ -176,6 +181,26 @@ class APIClient {
   async getAttendanceDays(groupId: string, month: string) {
     const response = await this.axiosInstance.get('/attendance/days/', { params: { group_id: groupId, month } })
     return response.data as { dates: string[] }
+  }
+
+  async getEmptySession(groupId: string, date: string) {
+    const response = await this.axiosInstance.get('/empty-sessions/', { params: { group: groupId, date } })
+    const data = response.data
+    return (data.results || data) as { id: string }[]
+  }
+
+  async createEmptySession(groupId: string, date: string) {
+    const response = await this.axiosInstance.post('/empty-sessions/', { group: groupId, date })
+    return response.data as { id: string }
+  }
+
+  async deleteEmptySession(id: string) {
+    await this.axiosInstance.delete(`/empty-sessions/${id}/`)
+  }
+
+  async updateOrganizationSettings(slug: string, data: { empty_class_rate: number }) {
+    const response = await this.axiosInstance.patch(`/organizations/${slug}/`, data)
+    return response.data
   }
 
   async mondlyImport(file: File) {

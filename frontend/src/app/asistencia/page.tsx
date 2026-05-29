@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api'
@@ -19,51 +19,44 @@ function MiniCalendar({
   selectedDate,
   onSelectDate,
   daysWithAttendance,
+  daysWithEmptySession,
   calendarMonth,
   onChangeMonth,
 }: {
   selectedDate: string
   onSelectDate: (d: string) => void
   daysWithAttendance: Set<string>
+  daysWithEmptySession: Set<string>
   calendarMonth: Date
   onChangeMonth: (d: Date) => void
 }) {
   const days = eachDayOfInterval({ start: startOfMonth(calendarMonth), end: endOfMonth(calendarMonth) })
-  // Monday-first offset: getDay returns 0=Sun, remap to 0=Mon
   const firstDow = (getDay(days[0]) + 6) % 7
   const blanks = Array(firstDow).fill(null)
   const today = format(new Date(), 'yyyy-MM-dd')
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-3 select-none">
-      {/* Month nav */}
       <div className="flex items-center justify-between mb-2">
-        <button
-          onClick={() => onChangeMonth(subMonths(calendarMonth, 1))}
-          className="p-1 rounded hover:bg-gray-100 text-gray-500 text-xs leading-none"
-        >‹</button>
+        <button onClick={() => onChangeMonth(subMonths(calendarMonth, 1))} className="p-1 rounded hover:bg-gray-100 text-gray-500 text-xs leading-none">‹</button>
         <span className="text-xs font-semibold text-gray-700">
           {MONTH_NAMES[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
         </span>
-        <button
-          onClick={() => onChangeMonth(addMonths(calendarMonth, 1))}
-          className="p-1 rounded hover:bg-gray-100 text-gray-500 text-xs leading-none"
-        >›</button>
+        <button onClick={() => onChangeMonth(addMonths(calendarMonth, 1))} className="p-1 rounded hover:bg-gray-100 text-gray-500 text-xs leading-none">›</button>
       </div>
 
-      {/* Day headers */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_LABELS.map((l) => (
           <div key={l} className="text-center text-[10px] font-medium text-gray-400">{l}</div>
         ))}
       </div>
 
-      {/* Day cells */}
       <div className="grid grid-cols-7 gap-y-0.5">
         {blanks.map((_, i) => <div key={`b${i}`} />)}
         {days.map((day) => {
           const ds = format(day, 'yyyy-MM-dd')
           const hasAtt = daysWithAttendance.has(ds)
+          const isEmpty = daysWithEmptySession.has(ds)
           const isSelected = ds === selectedDate
           const isToday = ds === today
           return (
@@ -76,18 +69,28 @@ function MiniCalendar({
                   ? 'bg-blue-600 text-white font-bold'
                   : hasAtt
                     ? 'bg-green-100 text-green-800 font-semibold hover:bg-green-200'
-                    : isToday
-                      ? 'border border-blue-300 text-blue-600 hover:bg-blue-50'
-                      : 'text-gray-700 hover:bg-gray-100',
+                    : isEmpty
+                      ? 'bg-orange-100 text-orange-800 font-semibold hover:bg-orange-200'
+                      : isToday
+                        ? 'border border-blue-300 text-blue-600 hover:bg-blue-50'
+                        : 'text-gray-700 hover:bg-gray-100',
               ].join(' ')}
             >
               {day.getDate()}
               {hasAtt && !isSelected && (
                 <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500" />
               )}
+              {isEmpty && !hasAtt && !isSelected && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-orange-400" />
+              )}
             </button>
           )
         })}
+      </div>
+
+      <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" /> Con alumnos</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" /> Sin alumnos</span>
       </div>
     </div>
   )
@@ -110,6 +113,9 @@ export default function AttendancePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [daysWithAttendance, setDaysWithAttendance] = useState<Set<string>>(new Set())
+  const [daysWithEmptySession, setDaysWithEmptySession] = useState<Set<string>>(new Set())
+  const [emptySessionId, setEmptySessionId] = useState<string | null>(null)
+  const [isTogglingEmpty, setIsTogglingEmpty] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -131,7 +137,6 @@ export default function AttendancePage() {
     }).catch(console.error).finally(() => setIsLoading(false))
   }, [user])
 
-  // Load enrollments when group changes
   useEffect(() => {
     if (!selectedGroup) return
     apiClient.getGroup(selectedGroup.id).then((groupData) => {
@@ -143,18 +148,38 @@ export default function AttendancePage() {
     }).catch(console.error)
   }, [selectedGroup])
 
-  // Load days with attendance for the calendar month
+  // Load calendar dots (attendance days + empty sessions) for the month
   useEffect(() => {
     if (!selectedGroup) return
     const month = format(calendarMonth, 'yyyy-MM')
+    const [y, m] = month.split('-').map(Number)
+
     apiClient.getAttendanceDays(selectedGroup.id, month)
       .then((res) => setDaysWithAttendance(new Set(res.dates)))
       .catch(console.error)
+
+    // Fetch all empty sessions for this group in this month by fetching with group filter
+    // We rely on the list endpoint and filter client-side by month
+    apiClient.getEmptySession(selectedGroup.id, '').then((sessions) => {
+      const monthStr = `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}`
+      setDaysWithEmptySession(new Set(sessions.filter((s: any) => s.date?.startsWith(monthStr)).map((s: any) => s.date)))
+    }).catch(console.error)
   }, [selectedGroup, calendarMonth])
 
-  // Check for existing attendance whenever group or date changes
+  // Check for existing attendance + empty session for the selected date
   useEffect(() => {
-    if (!selectedGroup || !selectedDate || enrollments.length === 0) {
+    if (!selectedGroup || !selectedDate) {
+      setHasExisting(false)
+      setEmptySessionId(null)
+      return
+    }
+
+    // Check empty session
+    apiClient.getEmptySession(selectedGroup.id, selectedDate).then((sessions) => {
+      setEmptySessionId(sessions.length > 0 ? sessions[0].id : null)
+    }).catch(() => setEmptySessionId(null))
+
+    if (enrollments.length === 0) {
       setHasExisting(false)
       return
     }
@@ -190,6 +215,19 @@ export default function AttendancePage() {
     setAttendance((prev) => ({ ...prev, [enrollmentId]: status }))
   }
 
+  const refreshAllDots = useCallback(() => {
+    if (!selectedGroup) return
+    const month = format(calendarMonth, 'yyyy-MM')
+    const [y, m] = month.split('-').map(Number)
+    apiClient.getAttendanceDays(selectedGroup.id, month)
+      .then((res) => setDaysWithAttendance(new Set(res.dates)))
+      .catch(console.error)
+    apiClient.getEmptySession(selectedGroup.id, '').then((sessions) => {
+      const monthStr = `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}`
+      setDaysWithEmptySession(new Set(sessions.filter((s: any) => s.date?.startsWith(monthStr)).map((s: any) => s.date)))
+    }).catch(console.error)
+  }, [selectedGroup, calendarMonth])
+
   const doSave = async () => {
     if (!selectedGroup) return
     setIsSaving(true)
@@ -203,11 +241,7 @@ export default function AttendancePage() {
       await apiClient.markAttendanceBulk(selectedGroup.id, selectedDate, attendanceData)
       setSaveMessage({ type: 'success', text: '✓ Asistencia guardada correctamente' })
       setHasExisting(true)
-      // Refresh calendar dots
-      const month = format(calendarMonth, 'yyyy-MM')
-      apiClient.getAttendanceDays(selectedGroup.id, month)
-        .then((res) => setDaysWithAttendance(new Set(res.dates)))
-        .catch(console.error)
+      refreshAllDots()
       setTimeout(() => setSaveMessage(null), 4000)
     } catch (error) {
       console.error('Failed to save attendance:', error)
@@ -218,11 +252,8 @@ export default function AttendancePage() {
   }
 
   const handleSaveClick = () => {
-    if (hasExisting) {
-      setShowConfirm(true)
-    } else {
-      doSave()
-    }
+    if (hasExisting) setShowConfirm(true)
+    else doSave()
   }
 
   const handleConfirm = () => {
@@ -240,11 +271,7 @@ export default function AttendancePage() {
       enrollments.forEach((e) => { defaults[e.id] = 'present' })
       setAttendance(defaults)
       setSaveMessage({ type: 'success', text: '✓ Asistencia del día eliminada correctamente' })
-      // Refresh calendar dots
-      const month = format(calendarMonth, 'yyyy-MM')
-      apiClient.getAttendanceDays(selectedGroup.id, month)
-        .then((res) => setDaysWithAttendance(new Set(res.dates)))
-        .catch(console.error)
+      refreshAllDots()
       setTimeout(() => setSaveMessage(null), 4000)
     } catch {
       setSaveMessage({ type: 'error', text: 'Error al eliminar la asistencia' })
@@ -254,17 +281,34 @@ export default function AttendancePage() {
     }
   }
 
+  const handleToggleEmptySession = async () => {
+    if (!selectedGroup || isTogglingEmpty) return
+    setIsTogglingEmpty(true)
+    try {
+      if (emptySessionId) {
+        await apiClient.deleteEmptySession(emptySessionId)
+        setEmptySessionId(null)
+        setSaveMessage({ type: 'success', text: '✓ Clase sin alumnos desmarcada' })
+      } else {
+        const created = await apiClient.createEmptySession(selectedGroup.id, selectedDate)
+        setEmptySessionId(created.id)
+        setSaveMessage({ type: 'success', text: '✓ Día marcado como clase dada sin alumnos' })
+      }
+      refreshAllDots()
+      setTimeout(() => setSaveMessage(null), 4000)
+    } catch {
+      setSaveMessage({ type: 'error', text: 'Error al actualizar el registro' })
+    } finally {
+      setIsTogglingEmpty(false)
+    }
+  }
+
   const handleSelectDate = (ds: string) => {
     setSelectedDate(ds)
-    // If selected date is in a different month, sync calendar
     const m = startOfMonth(new Date(ds + 'T00:00:00'))
     if (format(m, 'yyyy-MM') !== format(calendarMonth, 'yyyy-MM')) {
       setCalendarMonth(m)
     }
-  }
-
-  const handleChangeMonth = (m: Date) => {
-    setCalendarMonth(m)
   }
 
   if (isLoading) {
@@ -299,16 +343,16 @@ export default function AttendancePage() {
           {/* Mobile: calendar on top full-width. Desktop: side by side */}
           <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start">
 
-            {/* Mobile-only calendar (above the list) */}
+            {/* Mobile-only calendar */}
             <div className="sm:hidden w-full">
               <MiniCalendar
                 selectedDate={selectedDate}
                 onSelectDate={handleSelectDate}
                 daysWithAttendance={daysWithAttendance}
+                daysWithEmptySession={daysWithEmptySession}
                 calendarMonth={calendarMonth}
-                onChangeMonth={handleChangeMonth}
+                onChangeMonth={setCalendarMonth}
               />
-              <p className="mt-1 text-[10px] text-gray-400 text-center">Verde = attendance cargada</p>
             </div>
 
             {/* Left: group + status summary + list */}
@@ -324,12 +368,31 @@ export default function AttendancePage() {
                       const group = groups.find((g) => g.id === val)
                       setSelectedGroup(group || null)
                       setHasExisting(false)
+                      setEmptySessionId(null)
                     }}
                     options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.level})` }))}
                   />
                 </div>
                 <span className="text-xs text-gray-400 shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
               </div>
+
+              {/* Empty session banner */}
+              {emptySessionId && (
+                <div className="mb-3 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-orange-800 text-xs">
+                    <span className="text-base">🏫</span>
+                    <span className="font-semibold">Clase dada sin alumnos</span>
+                    <span className="text-orange-600">— se sumará 0.5h al reporte del teacher</span>
+                  </div>
+                  <button
+                    onClick={handleToggleEmptySession}
+                    disabled={isTogglingEmpty}
+                    className="shrink-0 text-xs text-orange-700 border border-orange-300 bg-white hover:bg-orange-50 px-2 py-1 rounded transition"
+                  >
+                    Desmarcar
+                  </button>
+                </div>
+              )}
 
               {/* Status summary bar */}
               {enrollments.length > 0 && (
@@ -386,22 +449,45 @@ export default function AttendancePage() {
                       )
                     })}
 
-                    {/* Save Button */}
-                    <div className="pt-1">
+                    <div className="pt-1 flex gap-2">
                       <button
                         onClick={handleSaveClick}
                         disabled={isSaving}
-                        className={`w-full disabled:opacity-50 text-white font-medium text-sm py-2 px-4 rounded-lg transition ${hasExisting ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`}
+                        className={`flex-1 disabled:opacity-50 text-white font-medium text-sm py-2 px-4 rounded-lg transition ${hasExisting ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-600 hover:bg-green-700'}`}
                       >
-                        {isSaving ? '⏳ Guardando...' : hasExisting ? '⚠ Sobreescribir asistencia' : '✓ Guardar asistencia'}
+                        {isSaving ? '⏳ Guardando...' : hasExisting ? '⚠ Sobreescribir' : '✓ Guardar asistencia'}
                       </button>
                     </div>
                   </>
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-100 p-8 text-center text-gray-500">
-                    <p className="text-sm font-medium mb-1">No hay estudiantes inscriptos</p>
-                    <p className="text-xs">Este grupo no tiene estudiantes todavía</p>
+                  <div className="bg-white rounded-lg border border-gray-100 p-6 text-center text-gray-500 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium mb-1">No hay estudiantes inscriptos</p>
+                      <p className="text-xs text-gray-400">Este grupo no tiene estudiantes todavía</p>
+                    </div>
+                    <button
+                      onClick={handleToggleEmptySession}
+                      disabled={isTogglingEmpty}
+                      className={`w-full text-sm font-medium py-2 px-4 rounded-lg border transition ${
+                        emptySessionId
+                          ? 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100'
+                          : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {isTogglingEmpty ? '...' : emptySessionId ? '🏫 Clase dada sin alumnos (click para desmarcar)' : '🏫 Marcar clase dada sin alumnos'}
+                    </button>
                   </div>
+                )}
+
+                {/* Empty session button — shown when there ARE students too */}
+                {enrollments.length > 0 && !emptySessionId && (
+                  <button
+                    onClick={handleToggleEmptySession}
+                    disabled={isTogglingEmpty}
+                    className="w-full mt-1 text-xs font-medium py-1.5 px-3 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50 transition"
+                  >
+                    🏫 Marcar como clase dada sin alumnos
+                  </button>
                 )}
               </div>
             </div>
@@ -412,12 +498,10 @@ export default function AttendancePage() {
                 selectedDate={selectedDate}
                 onSelectDate={handleSelectDate}
                 daysWithAttendance={daysWithAttendance}
+                daysWithEmptySession={daysWithEmptySession}
                 calendarMonth={calendarMonth}
-                onChangeMonth={handleChangeMonth}
+                onChangeMonth={setCalendarMonth}
               />
-              <p className="mt-2 text-[10px] text-gray-400 text-center">
-                Verde = attendance cargada
-              </p>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     CorporateClient, Teacher, Student, Group, Enrollment,
-    Attendance, Evaluation, Certificate
+    Attendance, Evaluation, Certificate, EmptyClassSession
 )
 
 
@@ -120,3 +120,13 @@ class CertificateSerializer(serializers.ModelSerializer):
         model = Certificate
         fields = ('id', 'student', 'student_name', 'group', 'group_name', 'level_achieved', 'issue_date', 'certificate_number', 'pdf_url', 'issued_by', 'issued_by_name', 'notes', 'created_at')
         read_only_fields = ('id', 'issue_date', 'created_at')
+
+
+
+class EmptyClassSessionSerializer(serializers.ModelSerializer):
+    group_name = serializers.CharField(source='group.name', read_only=True)
+
+    class Meta:
+        model = EmptyClassSession
+        fields = ('id', 'group', 'group_name', 'date', 'notes', 'created_at')
+        read_only_fields = ('id', 'created_at')

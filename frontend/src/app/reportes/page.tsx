@@ -909,12 +909,13 @@ function LevelsReport() {
 // ── Teachers report ───────────────────────────────────────────────────────────
 
 type TeacherDay = {
-  date: string; group_id: string; group_name: string; students: string[]
+  date: string; group_id: string; group_name: string; students: string[]; is_empty: boolean
 }
 
 type TeacherRow = {
   teacher_id: string; full_name: string; email: string
-  hours: number; groups_count: number; year: number; month: number
+  hours: number; full_days: number; empty_days: number; empty_class_rate: number
+  groups_count: number; year: number; month: number
   days: TeacherDay[]
 }
 
@@ -953,37 +954,50 @@ function TeacherDetailModal({ teacher, onClose }: { teacher: TeacherRow | null; 
             </div>
 
             {/* Summary */}
-            <div className="px-3 py-3 sm:px-6 sm:py-4 border-b border-gray-100 flex gap-6">
+            <div className="px-3 py-3 sm:px-6 sm:py-4 border-b border-gray-100 flex gap-6 flex-wrap">
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Period</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Período</p>
                 <p className="text-sm font-semibold text-gray-800">{MONTH_NAMES[teacher.month - 1]} {teacher.year}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Hours</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Horas</p>
                 <p className="text-2xl font-bold text-indigo-700">{teacher.hours}h</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Groups</p>
-                <p className="text-sm font-semibold text-gray-800">{teacher.groups_count}</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Clases norm.</p>
+                <p className="text-sm font-semibold text-gray-800">{teacher.full_days ?? teacher.days?.filter(d => !d.is_empty).length ?? 0}</p>
               </div>
+              {(teacher.empty_days ?? 0) > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Sin alumnos</p>
+                  <p className="text-sm font-semibold text-orange-600">{teacher.empty_days} × {teacher.empty_class_rate}h</p>
+                </div>
+              )}
             </div>
 
             {/* Day list */}
             <div className="flex-1 overflow-y-auto px-6 py-4">
               {teacher.days.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-8">No classes recorded</p>
+                <p className="text-sm text-gray-400 text-center py-8">Sin clases registradas</p>
               ) : (
                 <div className="space-y-3">
                   {teacher.days.map((day, i) => (
-                    <div key={i} className="border border-gray-100 rounded-lg overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50">
+                    <div key={i} className={`border rounded-lg overflow-hidden ${day.is_empty ? 'border-orange-200' : 'border-gray-100'}`}>
+                      <div className={`flex items-center justify-between px-4 py-2.5 ${day.is_empty ? 'bg-orange-50' : 'bg-gray-50'}`}>
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-semibold text-gray-800">
-                            {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {new Date(day.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short', month: 'short', day: 'numeric' })}
                           </span>
-                          <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">{day.group_name}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${day.is_empty ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                            {day.group_name}
+                          </span>
+                          {day.is_empty && (
+                            <span className="text-xs text-orange-500 font-medium">🏫 sin alumnos</span>
+                          )}
                         </div>
-                        <span className="text-xs text-gray-400">{day.students.length} student{day.students.length !== 1 ? 's' : ''}</span>
+                        {!day.is_empty && (
+                          <span className="text-xs text-gray-400">{day.students.length} alumno{day.students.length !== 1 ? 's' : ''}</span>
+                        )}
                       </div>
                       {day.students.length > 0 && (
                         <div className="px-4 py-2.5 flex flex-wrap gap-1.5">
