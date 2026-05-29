@@ -572,7 +572,7 @@ def teachers_report(request):
     # students is a list of {name, status} dicts
     teacher_data = defaultdict(lambda: {
         'first_name': '', 'last_name': '', 'email': '',
-        'days': defaultdict(lambda: {'group_name': '', 'students': [], 'is_empty': False}),
+        'days': defaultdict(lambda: {'group_name': '', 'students': [], 'is_empty': False, 'has_present': False}),
     })
 
     for rec in records:
@@ -586,6 +586,8 @@ def teachers_report(request):
         td['email'] = group.teacher.user.email or ''
         key = (str(group.id), str(rec.date))
         td['days'][key]['group_name'] = group.name
+        if rec.status == 'present':
+            td['days'][key]['has_present'] = True
         student_name = rec.student.user.get_full_name() or rec.student.user.email
         if not any(s['name'] == student_name for s in td['days'][key]['students']):
             td['days'][key]['students'].append({'name': student_name, 'status': rec.status})
@@ -613,7 +615,8 @@ def teachers_report(request):
                 'group_id': k[0],
                 'group_name': v['group_name'],
                 'students': sorted(v['students'], key=lambda s: s['name']),
-                'is_empty': v['is_empty'],
+                # A day is empty if: explicitly marked as empty, OR has attendance but no student is present
+                'is_empty': v['is_empty'] or (not v['is_empty'] and not v['has_present'] and len(v['students']) > 0),
             }
             for k, v in data['days'].items()
         ], key=lambda d: (d['date'], d['group_name']))
