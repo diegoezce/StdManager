@@ -1463,12 +1463,12 @@ function MondlyReport() {
 
 type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers' | 'mondly'
 
-const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: boolean }[] = [
+const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: boolean; teacherVisible?: boolean }[] = [
   { value: 'students', label: 'Students', teacherHidden: true },
   { value: 'attendance', label: 'Attendance' },
   { value: 'groups', label: 'Groups', teacherHidden: true },
   { value: 'levels', label: 'Levels', teacherHidden: true },
-  { value: 'teachers', label: 'Teachers', teacherHidden: true, ownerOnly: true },
+  { value: 'teachers', label: 'Mis horas', ownerOnly: true, teacherVisible: true },
   { value: 'mondly', label: 'Mondly', teacherHidden: true },
 ]
 
@@ -1477,7 +1477,7 @@ export default function ReportesPage() {
   const { user, me } = useAuth()
   const isTeacher = user?.role === 'teacher'
   const isOwnerOrManager = user?.role === 'owner' || user?.role === 'manager'
-  const [activeTab, setActiveTab] = useState<Tab>(isTeacher ? 'attendance' : 'students')
+  const [activeTab, setActiveTab] = useState<Tab>(isTeacher ? 'teachers' : 'students')
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -1492,7 +1492,7 @@ export default function ReportesPage() {
 
   const isCorporateClient = user?.role === 'corporate_client'
   const visibleTabs = TABS.filter((t) => {
-    if (isTeacher && t.teacherHidden) return false
+    if (isTeacher) return t.teacherVisible || (!t.teacherHidden && !t.ownerOnly)
     if (isCorporateClient && t.teacherHidden) return false
     if (t.ownerOnly && !isOwnerOrManager) return false
     return true

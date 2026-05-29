@@ -530,13 +530,14 @@ def groups_report(request):
 def teachers_report(request):
     """Hours per teacher for a calendar month.
     Full class day = 1h. Empty class session = org.empty_class_rate hours."""
-    if request.user.role not in ('owner', 'manager', 'super_admin'):
+    if request.user.role not in ('owner', 'manager', 'super_admin', 'teacher'):
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied()
 
     import calendar
     from collections import defaultdict
 
+    is_teacher = request.user.role == 'teacher'
     organization = request.user.organization
     empty_class_rate = float(organization.empty_class_rate)
     today = timezone.now().date()
@@ -552,19 +553,20 @@ def teachers_report(request):
     last_day = today.replace(year=year, month=month, day=calendar.monthrange(year, month)[1])
 
     # Fetch all attendance records for the month with student names
-    records = (
-        Attendance.objects
-        .filter(organization=organization, date__range=(first_day, last_day))
-        .select_related('student__user', 'group__teacher__user')
-        .order_by('date', 'group_id')
-    )
+    records_qs = Attendance.objects.filter(organization=organization, date__range=(first_day, last_day))
+    empty_qs = EmptyClassSession.objects.filter(organization=organization, date__range=(first_day, last_day))
 
-    # Fetch empty class sessions for the month
-    empty_sessions = (
-        EmptyClassSession.objects
-        .filter(organization=organization, date__range=(first_day, last_day))
-        .select_related('group__teacher__user')
-    )
+    # Teachers only see their own data
+    if is_teacher:
+        try:
+            teacher_profile = request.user.teacher_profile
+            records_qs = records_qs.filter(group__teacher=teacher_profile)
+            empty_qs = empty_qs.filter(group__teacher=teacher_profile)
+        except Exception:
+            return Response([])
+
+    records = records_qs.select_related('student__user', 'group__teacher__user').order_by('date', 'group_id')
+    empty_sessions = empty_qs.select_related('group__teacher__user')
 
     # Build per-teacher data: teacher_id → { meta, days: {(group_id, date): {group_name, students, is_empty}} }
     # students is a list of {name, status} dicts
