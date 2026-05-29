@@ -211,11 +211,14 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         qs = Attendance.objects.filter(organization=self.request.user.organization)
         group = self.request.query_params.get('group')
         date = self.request.query_params.get('date')
+        student = self.request.query_params.get('student')
         if group:
             qs = qs.filter(group_id=group)
         if date:
             qs = qs.filter(date=date)
-        return qs
+        if student:
+            qs = qs.filter(student_id=student)
+        return qs.select_related('group').order_by('date')
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, created_by=self.request.user)
@@ -236,6 +239,27 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         ).delete()
         logger.info('Deleted %d attendance records for group %s on %s by %s', deleted, group_id, date, request.user.email)
         return Response({'deleted': deleted}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='days')
+    def days(self, request):
+        """Return distinct dates that have attendance records for a group in a given month."""
+        group_id = request.query_params.get('group_id')
+        month = request.query_params.get('month')  # YYYY-MM
+        if not group_id or not month:
+            return Response({'error': 'group_id and month are required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            year, mon = month.split('-')
+            year, mon = int(year), int(mon)
+        except (ValueError, AttributeError):
+            return Response({'error': 'month must be YYYY-MM'}, status=status.HTTP_400_BAD_REQUEST)
+        dates = (
+            Attendance.objects
+            .filter(organization=request.user.organization, group_id=group_id, date__year=year, date__month=mon)
+            .values_list('date', flat=True)
+            .distinct()
+            .order_by('date')
+        )
+        return Response({'dates': [str(d) for d in dates]})
 
     @action(detail=False, methods=['post'])
     def bulk(self, request):

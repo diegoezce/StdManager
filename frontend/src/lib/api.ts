@@ -167,6 +167,17 @@ class APIClient {
     return response.data
   }
 
+  async getStudentAttendance(studentId: string) {
+    const response = await this.axiosInstance.get('/attendance/', { params: { student: studentId } })
+    const data = response.data
+    return (data.results || data) as { date: string; status: string; group_name: string }[]
+  }
+
+  async getAttendanceDays(groupId: string, month: string) {
+    const response = await this.axiosInstance.get('/attendance/days/', { params: { group_id: groupId, month } })
+    return response.data as { dates: string[] }
+  }
+
   async mondlyImport(file: File) {
     const form = new FormData()
     form.append('file', file)

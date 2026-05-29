@@ -411,6 +411,67 @@ function StudentsReport() {
   )
 }
 
+// ── Attendance drill-down pills ───────────────────────────────────────────────
+
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  present: { label: 'P',  cls: 'bg-green-100 text-green-700 border-green-200' },
+  absent:  { label: 'A',  cls: 'bg-red-100 text-red-700 border-red-200' },
+  late:    { label: 'T',  cls: 'bg-orange-100 text-orange-700 border-orange-200' },
+  excused: { label: 'J',  cls: 'bg-purple-100 text-purple-700 border-purple-200' },
+}
+
+function AttendanceDrillDown({ studentId }: { studentId: string }) {
+  const [records, setRecords] = useState<{ date: string; status: string; group_name: string }[] | null>(null)
+
+  useEffect(() => {
+    apiClient.getStudentAttendance(studentId).then(setRecords).catch(() => setRecords([]))
+  }, [studentId])
+
+  if (records === null) {
+    return <div className="py-2 px-2"><div className="animate-pulse h-4 w-32 bg-gray-100 rounded" /></div>
+  }
+  if (records.length === 0) {
+    return <p className="py-2 px-2 text-xs text-gray-400">Sin registros</p>
+  }
+
+  // Group by month
+  const byMonth: Record<string, typeof records> = {}
+  records.forEach((r) => {
+    const key = r.date.slice(0, 7) // YYYY-MM
+    ;(byMonth[key] = byMonth[key] || []).push(r)
+  })
+
+  return (
+    <div className="py-2 px-2 space-y-2">
+      {Object.entries(byMonth).sort(([a], [b]) => b.localeCompare(a)).map(([month, recs]) => {
+        const [y, m] = month.split('-')
+        const label = `${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(m) - 1]} ${y}`
+        return (
+          <div key={month}>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{label}</p>
+            <div className="flex flex-wrap gap-1">
+              {recs.map((r) => {
+                const pill = STATUS_PILL[r.status] ?? { label: r.status[0].toUpperCase(), cls: 'bg-gray-100 text-gray-600 border-gray-200' }
+                const day = r.date.slice(8) // DD
+                return (
+                  <span
+                    key={r.date}
+                    title={`${r.date} · ${r.group_name} · ${r.status}`}
+                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[11px] font-medium ${pill.cls}`}
+                  >
+                    <span className="text-[10px] opacity-60">{day}</span>
+                    <span>{pill.label}</span>
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Attendance report ─────────────────────────────────────────────────────────
 
 function AttendanceReport() {
@@ -421,10 +482,12 @@ function AttendanceReport() {
   const [selectedGroup, setSelectedGroup] = useState<string>('all')
   const [sortKey, setSortKey] = useState<'student_name' | 'company' | 'rate' | 'total'>('student_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     setIsLoading(true)
     setSelectedGroup('all')
+    setExpandedId(null)
     apiClient.getAttendanceReport(period).then((data) => {
       setRows(data)
       setIsLoading(false)
@@ -517,33 +580,55 @@ function AttendanceReport() {
                     <th onClick={() => toggleSort('student_name')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Student <SortIcon k="student_name" /></th>
                     <th onClick={() => toggleSort('company')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Company <SortIcon k="company" /></th>
                     <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Group</th>
-                    <th onClick={() => toggleSort('total')} className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Classes <SortIcon k="total" /></th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Present</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Absent</th>
-                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Late</th>
+                    <th onClick={() => toggleSort('total')} className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Clases <SortIcon k="total" /></th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Pres.</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Aus.</th>
+                    <th className="px-3 py-2 sm:px-6 sm:py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Tarde</th>
                     <th onClick={() => toggleSort('rate')} className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none">Rate <SortIcon k="rate" /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.length === 0 ? (
                     <tr><td colSpan={8} className="px-6 py-10 text-center text-gray-400 text-sm">No attendance records for this period</td></tr>
-                  ) : filtered.map((r) => (
-                    <tr key={r.student_id} className="hover:bg-gray-50 transition">
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm font-medium text-gray-900">{r.student_name}</td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{r.company ?? <span className="text-gray-300">—</span>}</td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{r.groups.join(', ') || <span className="text-gray-300">—</span>}</td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center text-sm text-gray-700">{r.total}</td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.present} color="bg-green-100 text-green-700" /></td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.absent} color="bg-red-100 text-red-700" /></td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.late} color="bg-yellow-100 text-yellow-700" /></td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-4"><AttendanceBar rate={r.rate} /></td>
-                    </tr>
-                  ))}
+                  ) : filtered.map((r) => {
+                    const isExpanded = expandedId === r.student_id
+                    return (
+                      <>
+                        <tr
+                          key={r.student_id}
+                          onClick={() => setExpandedId(isExpanded ? null : r.student_id)}
+                          className={`cursor-pointer transition ${isExpanded ? 'bg-indigo-50/60' : 'hover:bg-gray-50'}`}
+                        >
+                          <td className="px-3 py-3 sm:px-6 sm:py-4">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                              <span className="text-sm font-medium text-gray-900">{r.student_name}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{r.company ?? <span className="text-gray-300">—</span>}</td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4 text-sm text-gray-600">{r.groups.join(', ') || <span className="text-gray-300">—</span>}</td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4 text-center text-sm text-gray-700">{r.total}</td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.present} color="bg-green-100 text-green-700" /></td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.absent} color="bg-red-100 text-red-700" /></td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4 text-center"><Pill count={r.late} color="bg-yellow-100 text-yellow-700" /></td>
+                          <td className="px-3 py-3 sm:px-6 sm:py-4"><AttendanceBar rate={r.rate} /></td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${r.student_id}-detail`} className="bg-indigo-50/40">
+                            <td colSpan={8} className="px-3 sm:px-8 pb-3 pt-0">
+                              <AttendanceDrillDown studentId={r.student_id} />
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
             <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
               {filtered.length} student{filtered.length !== 1 ? 's' : ''} — {PERIODS.find((p) => p.value === period)?.label}
+              <span className="ml-2 text-gray-300">· click para ver detalle</span>
             </div>
           </div>
         </>
