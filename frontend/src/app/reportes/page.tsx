@@ -1463,12 +1463,12 @@ function MondlyReport() {
 
 type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers' | 'mondly'
 
-const TABS: { value: Tab; label: string; teacherHidden?: boolean; ownerOnly?: boolean; teacherVisible?: boolean }[] = [
+const TABS: { value: Tab; label: string; teacherLabel?: string; teacherHidden?: boolean; ownerOnly?: boolean; teacherVisible?: boolean }[] = [
   { value: 'students', label: 'Students', teacherHidden: true },
   { value: 'attendance', label: 'Attendance' },
   { value: 'groups', label: 'Groups', teacherHidden: true },
   { value: 'levels', label: 'Levels', teacherHidden: true },
-  { value: 'teachers', label: 'Mis horas', ownerOnly: true, teacherVisible: true },
+  { value: 'teachers', label: 'Teachers', teacherLabel: 'Mis horas', ownerOnly: true, teacherVisible: true },
   { value: 'mondly', label: 'Mondly', teacherHidden: true },
 ]
 
@@ -1531,7 +1531,7 @@ export default function ReportesPage() {
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
-                  {tab.label}
+                  {isTeacher && tab.teacherLabel ? tab.teacherLabel : tab.label}
                 </button>
               ))}
             </div>
