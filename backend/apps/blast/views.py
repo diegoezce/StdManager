@@ -381,7 +381,7 @@ class EmptyClassSessionViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(organization=self.request.user.organization, created_by=self.request.user)
+        serializer.save(organization=self.request.user.organization)
 
 
 @api_view(['GET'])
