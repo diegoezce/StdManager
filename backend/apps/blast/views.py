@@ -567,6 +567,7 @@ def teachers_report(request):
     )
 
     # Build per-teacher data: teacher_id → { meta, days: {(group_id, date): {group_name, students, is_empty}} }
+    # students is a list of {name, status} dicts
     teacher_data = defaultdict(lambda: {
         'first_name': '', 'last_name': '', 'email': '',
         'days': defaultdict(lambda: {'group_name': '', 'students': [], 'is_empty': False}),
@@ -584,8 +585,8 @@ def teachers_report(request):
         key = (str(group.id), str(rec.date))
         td['days'][key]['group_name'] = group.name
         student_name = rec.student.user.get_full_name() or rec.student.user.email
-        if student_name not in td['days'][key]['students']:
-            td['days'][key]['students'].append(student_name)
+        if not any(s['name'] == student_name for s in td['days'][key]['students']):
+            td['days'][key]['students'].append({'name': student_name, 'status': rec.status})
 
     for es in empty_sessions:
         group = es.group
@@ -609,7 +610,7 @@ def teachers_report(request):
                 'date': k[1],
                 'group_id': k[0],
                 'group_name': v['group_name'],
-                'students': sorted(v['students']),
+                'students': sorted(v['students'], key=lambda s: s['name']),
                 'is_empty': v['is_empty'],
             }
             for k, v in data['days'].items()

@@ -907,7 +907,8 @@ function LevelsReport() {
 // ── Teachers report ───────────────────────────────────────────────────────────
 
 type TeacherDay = {
-  date: string; group_id: string; group_name: string; students: string[]; is_empty: boolean
+  date: string; group_id: string; group_name: string
+  students: { name: string; status: string }[]; is_empty: boolean
 }
 
 type TeacherRow = {
@@ -999,9 +1000,24 @@ function TeacherDetailModal({ teacher, onClose }: { teacher: TeacherRow | null; 
                       </div>
                       {day.students.length > 0 && (
                         <div className="px-4 py-2.5 flex flex-wrap gap-1.5">
-                          {day.students.map((s) => (
-                            <span key={s} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-600">{s}</span>
-                          ))}
+                          {day.students.map((s) => {
+                            const pill: Record<string, string> = {
+                              present: 'bg-green-50 border-green-200 text-green-800',
+                              absent:  'bg-red-50 border-red-200 text-red-700',
+                              late:    'bg-orange-50 border-orange-200 text-orange-700',
+                              excused: 'bg-purple-50 border-purple-200 text-purple-700',
+                            }
+                            const icon: Record<string, string> = {
+                              present: '✓', absent: '✗', late: '⏰', excused: '📋',
+                            }
+                            const cls = pill[s.status] ?? 'bg-gray-50 border-gray-200 text-gray-600'
+                            return (
+                              <span key={s.name} className={`inline-flex items-center gap-1 px-2 py-0.5 border rounded text-xs font-medium ${cls}`}>
+                                <span className="opacity-70">{icon[s.status] ?? ''}</span>
+                                {s.name}
+                              </span>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
