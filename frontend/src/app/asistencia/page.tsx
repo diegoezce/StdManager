@@ -296,24 +296,38 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* Controls row: group selector + calendar side by side */}
-          <div className="flex gap-4 mb-4 items-start">
+          {/* Mobile: calendar on top full-width. Desktop: side by side */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start">
+
+            {/* Mobile-only calendar (above the list) */}
+            <div className="sm:hidden w-full">
+              <MiniCalendar
+                selectedDate={selectedDate}
+                onSelectDate={handleSelectDate}
+                daysWithAttendance={daysWithAttendance}
+                calendarMonth={calendarMonth}
+                onChangeMonth={handleChangeMonth}
+              />
+              <p className="mt-1 text-[10px] text-gray-400 text-center">Verde = attendance cargada</p>
+            </div>
 
             {/* Left: group + status summary + list */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 w-full">
 
               {/* Compact group selector */}
-              <div className="bg-white rounded-lg border border-gray-200 px-3 py-2 mb-3 flex items-center gap-3">
+              <div className="bg-white rounded-lg border border-gray-200 px-3 py-2 mb-3 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
                 <label className="text-xs font-medium text-gray-400 shrink-0">Grupo</label>
-                <Select
-                  value={selectedGroup?.id || ''}
-                  onChange={(val) => {
-                    const group = groups.find((g) => g.id === val)
-                    setSelectedGroup(group || null)
-                    setHasExisting(false)
-                  }}
-                  options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.level})` }))}
-                />
+                <div className="flex-1 min-w-0">
+                  <Select
+                    value={selectedGroup?.id || ''}
+                    onChange={(val) => {
+                      const group = groups.find((g) => g.id === val)
+                      setSelectedGroup(group || null)
+                      setHasExisting(false)
+                    }}
+                    options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.level})` }))}
+                  />
+                </div>
                 <span className="text-xs text-gray-400 shrink-0">{format(new Date(selectedDate + 'T00:00:00'), 'dd/MM/yyyy')}</span>
               </div>
 
@@ -392,8 +406,8 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            {/* Right: mini calendar */}
-            <div className="w-56 shrink-0">
+            {/* Right: mini calendar — desktop only */}
+            <div className="hidden sm:block w-56 shrink-0">
               <MiniCalendar
                 selectedDate={selectedDate}
                 onSelectDate={handleSelectDate}
