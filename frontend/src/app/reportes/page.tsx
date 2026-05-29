@@ -302,17 +302,15 @@ function StudentsReport() {
   }, [students, selectedCompany, selectedGroup, showInactive, sortKey, sortDir])
 
   const stats = useMemo(() => {
-    const scope = filtered.filter((s) => s.is_active || showInactive)
-    const active = scope.filter((s) => s.is_active)
-    const withRate = active.filter((s) => s.attendance_rate !== null)
+    const withRate = filtered.filter((s) => s.attendance_rate !== null)
     const avgRate = withRate.length ? Math.round(withRate.reduce((sum, s) => sum + (s.attendance_rate ?? 0), 0) / withRate.length) : null
     return {
-      total: active.length,
-      companies: new Set(active.map((s) => s.company).filter(Boolean)).size,
+      total: filtered.length,
+      companies: new Set(filtered.map((s) => s.company).filter(Boolean)).size,
       avgRate,
-      withGroup: active.filter((s) => s.current_groups.length > 0).length,
+      withGroup: filtered.filter((s) => s.current_groups.length > 0).length,
     }
-  }, [filtered, showInactive])
+  }, [filtered])
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -336,7 +334,7 @@ function StudentsReport() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Active students', value: stats.total },
+          { label: showInactive ? 'Students (all)' : 'Active students', value: stats.total },
           { label: 'Companies', value: stats.companies },
           { label: 'Avg. attendance', value: stats.avgRate !== null ? `${stats.avgRate}%` : '—' },
           { label: 'In active group', value: stats.withGroup },
