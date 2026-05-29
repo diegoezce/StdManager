@@ -73,3 +73,6 @@ celerybeat-schedule
 .pytest_cache/
 .mypy_cache/
 *.tmp
+
+# TypeScript build cache
+*.tsbuildinfo
