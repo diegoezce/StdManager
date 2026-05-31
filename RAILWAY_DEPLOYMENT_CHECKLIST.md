@@ -24,7 +24,6 @@
   - Root directory: `frontend`
   - Build: Uses /frontend/Dockerfile (auto-detected)
 - [ ] Add PostgreSQL plugin (auto-sets DATABASE_URL)
-- [ ] Add Redis plugin (auto-sets REDIS_URL)
 
 ### 2. Configure Environment Variables
 
@@ -45,7 +44,6 @@ NODE_ENV=production
 
 **DO NOT SET:**
 - DATABASE_URL (Railway sets automatically)
-- REDIS_URL (Railway sets automatically)
 - Any localhost URLs
 
 ### 3. Deploy & Verify

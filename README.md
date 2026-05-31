@@ -16,7 +16,6 @@ Educational institution management platform with multi-tenant support.
 
 - **Backend**: Django 4.2 + Django REST Framework + PostgreSQL
 - **Frontend**: Next.js 14 + TypeScript + Tailwind CSS
-- **Queue**: Celery + Redis
 - **Containerization**: Docker + Docker Compose
 
 ## Quick Start
@@ -46,7 +45,6 @@ Services will be available at:
 - API Documentation: http://localhost:8000/api/docs/
 - Frontend: http://localhost:3000
 - PostgreSQL: localhost:5432
-- Redis: localhost:6379
 
 3. Create a superuser (in a new terminal):
 
@@ -243,8 +241,6 @@ docker exec goplanify_backend python manage.py migrate
 
 - Use `select_related()` and `prefetch_related()` for optimized queries
 - Implement pagination for large datasets
-- Use Redis for caching and sessions
-- Celery for async tasks (reports, PDF generation)
 - Database indexes on frequently queried fields
 
 ## Security
@@ -278,7 +274,7 @@ Quick start:
 1. Push code to GitHub
 2. Connect repository to Railway
 3. Configure environment variables
-4. Add PostgreSQL and Redis plugins
+4. Add the PostgreSQL plugin
 5. Deploy
 
 ### Alternative Deployment Options
@@ -286,7 +282,6 @@ Quick start:
 - **Backend**: AWS ECS, Heroku, DigitalOcean App Platform, Railway
 - **Frontend**: Vercel, Netlify (can also deploy from Railway)
 - **Database**: AWS RDS PostgreSQL, Railway PostgreSQL
-- **Redis**: AWS ElastiCache, Railway Redis
 
 ## Contributing
 

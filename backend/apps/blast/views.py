@@ -21,6 +21,17 @@ from .serializers import (
 from apps.core.permissions import IsOwnerOrManager, IsAdmin, IsTeacher
 
 
+def optimized_group_queryset(queryset):
+    active_enrollments = Enrollment.objects.filter(
+        status='active',
+    ).select_related('student__user')
+    return queryset.select_related('teacher__user').prefetch_related(
+        Prefetch('enrollments', queryset=active_enrollments, to_attr='active_enrollments'),
+    ).annotate(
+        active_enrollment_count=Count('enrollments', filter=Q(enrollments__status='active')),
+    )
+
+
 class CorporateClientViewSet(viewsets.ModelViewSet):
     serializer_class = CorporateClientSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrManager]
@@ -37,7 +48,9 @@ class TeacherViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
-        return Teacher.objects.filter(organization=self.request.user.organization)
+        return Teacher.objects.filter(
+            organization=self.request.user.organization,
+        ).select_related('user')
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization)
@@ -45,7 +58,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def groups(self, request, pk=None):
         teacher = self.get_object()
-        groups = teacher.groups.all()
+        groups = optimized_group_queryset(teacher.groups.all())
         serializer = GroupSerializer(groups, many=True)
         return Response(serializer.data)
 
@@ -57,21 +70,27 @@ class StudentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'super_admin':
-            return Student.objects.all()
+            return Student.objects.select_related('user', 'corporate_client')
         if user.role in ['owner', 'manager', 'admin']:
-            return Student.objects.filter(organization=user.organization)
+            return Student.objects.filter(
+                organization=user.organization,
+            ).select_related('user', 'corporate_client')
         elif user.role == 'student':
-            return Student.objects.filter(user=user)
+            return Student.objects.filter(user=user).select_related('user', 'corporate_client')
         elif user.role == 'teacher':
             return Student.objects.filter(
                 enrollments__group__teacher__user=user,
                 enrollments__status='active',
                 organization=user.organization,
-            ).distinct()
+            ).select_related('user', 'corporate_client').distinct()
         elif user.role == 'corporate_client':
             if user.corporate_client_id:
-                return Student.objects.filter(corporate_client_id=user.corporate_client_id)
-            return Student.objects.filter(corporate_client__contact_email=user.email)
+                return Student.objects.filter(
+                    corporate_client_id=user.corporate_client_id,
+                ).select_related('user', 'corporate_client')
+            return Student.objects.filter(
+                corporate_client__contact_email=user.email,
+            ).select_related('user', 'corporate_client')
         return Student.objects.none()
 
     def get_permissions(self):
@@ -86,19 +105,22 @@ class StudentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def progress(self, request, pk=None):
         student = self.get_object()
-        enrollments = student.enrollments.filter(status='active')
+        enrollments = student.enrollments.filter(status='active').select_related('group', 'student__user')
         attendance = student.attendances.count()
         present_count = student.attendances.filter(status='present').count()
         attendance_rate = (present_count / attendance * 100) if attendance > 0 else 0
 
         evaluations = student.evaluations.all()
-        avg_score = evaluations.aggregate(avg=models.Avg('score'))['avg'] or 0
+        avg_score = evaluations.aggregate(avg=Avg('score'))['avg'] or 0
 
         return Response({
             'enrollments': EnrollmentSerializer(enrollments, many=True).data,
             'attendance_rate': attendance_rate,
             'average_score': avg_score,
-            'certificates': CertificateSerializer(student.certificates.all(), many=True).data,
+            'certificates': CertificateSerializer(
+                student.certificates.select_related('student__user', 'group', 'issued_by'),
+                many=True,
+            ).data,
         })
 
 
@@ -109,12 +131,12 @@ class GroupViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'super_admin':
-            return Group.objects.all()
+            return optimized_group_queryset(Group.objects.all())
         if user.role in ['owner', 'manager', 'admin']:
-            return Group.objects.filter(organization=user.organization)
+            return optimized_group_queryset(Group.objects.filter(organization=user.organization))
         elif user.role == 'teacher':
-            return Group.objects.filter(teacher__user=user)
-        return Group.objects.filter(organization=user.organization)
+            return optimized_group_queryset(Group.objects.filter(teacher__user=user))
+        return optimized_group_queryset(Group.objects.filter(organization=user.organization))
 
     def get_permissions(self):
         """Allow admins/managers/owners to create/destroy, and teachers to update their own groups"""
@@ -193,12 +215,19 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'super_admin':
-            return Enrollment.objects.all()
+            return Enrollment.objects.select_related('group', 'student__user')
         if user.role in ['owner', 'manager']:
-            return Enrollment.objects.filter(organization=user.organization)
+            return Enrollment.objects.filter(
+                organization=user.organization,
+            ).select_related('group', 'student__user')
         elif user.role == 'student':
-            return Enrollment.objects.filter(student__user=user, organization=user.organization)
-        return Enrollment.objects.filter(organization=user.organization)
+            return Enrollment.objects.filter(
+                student__user=user,
+                organization=user.organization,
+            ).select_related('group', 'student__user')
+        return Enrollment.objects.filter(
+            organization=user.organization,
+        ).select_related('group', 'student__user')
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization)
@@ -219,7 +248,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             qs = qs.filter(date=date)
         if student:
             qs = qs.filter(student_id=student)
-        return qs.select_related('group').order_by('date')
+        return qs.select_related('group', 'student__user').order_by('date')
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, created_by=self.request.user)
@@ -303,7 +332,9 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTeacher]
 
     def get_queryset(self):
-        return Evaluation.objects.filter(organization=self.request.user.organization)
+        return Evaluation.objects.filter(
+            organization=self.request.user.organization,
+        ).select_related('student__user')
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, created_by=self.request.user)
@@ -316,12 +347,18 @@ class CertificateViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'super_admin':
-            return Certificate.objects.all()
+            return Certificate.objects.select_related('student__user', 'group', 'issued_by')
         if user.role in ['owner', 'manager']:
-            return Certificate.objects.filter(organization=user.organization)
+            return Certificate.objects.filter(
+                organization=user.organization,
+            ).select_related('student__user', 'group', 'issued_by')
         elif user.role == 'student':
-            return Certificate.objects.filter(student__user=user)
-        return Certificate.objects.filter(organization=user.organization)
+            return Certificate.objects.filter(
+                student__user=user,
+            ).select_related('student__user', 'group', 'issued_by')
+        return Certificate.objects.filter(
+            organization=user.organization,
+        ).select_related('student__user', 'group', 'issued_by')
 
     def perform_create(self, serializer):
         serializer.save(organization=self.request.user.organization, issued_by=self.request.user)
