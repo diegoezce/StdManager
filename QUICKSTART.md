@@ -58,7 +58,6 @@ GoPlanify
 │
 └── Infrastructure
     ├── PostgreSQL (data persistence)
-    ├── Redis (caching, queue)
     └── Docker Compose (orchestration)
 ```
 
@@ -345,7 +344,6 @@ docker exec goplanify_backend python manage.py seed_data
 
 - Database queries optimized with `select_related()` and `prefetch_related()`
 - Pagination on large lists (default 50 items/page)
-- Redis caching for sessions
 - Attendance bulk endpoint allows marking 20+ students in 1 request
 - Database indexes on:
   - organization + created_at (for sorting)

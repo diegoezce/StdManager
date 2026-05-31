@@ -55,8 +55,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
 class GroupSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
-    enrollment_count = serializers.ReadOnlyField()
-    available_spots = serializers.ReadOnlyField()
+    enrollment_count = serializers.SerializerMethodField()
+    available_spots = serializers.SerializerMethodField()
     enrollments = serializers.SerializerMethodField()
 
     class Meta:
@@ -65,8 +65,17 @@ class GroupSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'created_at')
 
     def get_enrollments(self, obj):
-        enrollments = obj.enrollments.filter(status='active')
+        enrollments = getattr(obj, 'active_enrollments', None)
+        if enrollments is None:
+            enrollments = obj.enrollments.filter(status='active').select_related('student__user')
         return EnrollmentSerializer(enrollments, many=True).data
+
+    def get_enrollment_count(self, obj):
+        count = getattr(obj, 'active_enrollment_count', None)
+        return count if count is not None else obj.enrollment_count
+
+    def get_available_spots(self, obj):
+        return obj.max_students - self.get_enrollment_count(obj)
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):

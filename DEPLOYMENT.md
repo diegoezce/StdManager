@@ -7,7 +7,6 @@ GoPlanify can be deployed to Railway with minimal configuration.
 1. Railway account (https://railway.app)
 2. GitHub repository with this code
 3. PostgreSQL database (Railway provides)
-4. Redis instance (Railway provides)
 
 ## Deployment Steps
 
@@ -38,14 +37,7 @@ Backend and frontend run as **separate services** in Railway.
 2. Select "PostgreSQL"
 3. Railway will automatically set `DATABASE_URL` environment variable
 
-### 3. Add Redis Plugin (optional)
-
-For Celery task queue:
-1. Click "Add"
-2. Select "Redis"
-3. Railway will automatically set `REDIS_URL` environment variable
-
-### 4. Configure Backend Service
+### 3. Configure Backend Service
 
 **Settings → Backend Service:**
 - Root directory: (leave empty)
@@ -127,7 +119,6 @@ railway run python manage.py flush
 | DEBUG | No | False |
 | SECRET_KEY | Yes | django-insecure-... |
 | DATABASE_URL | Auto | postgresql://... |
-| REDIS_URL | No | redis://... |
 | ALLOWED_HOSTS | Yes | yourdomain.com |
 | NEXT_PUBLIC_API_URL | Yes | https://yourdomain.com/api/v1 |
 | TIME_ZONE | No | UTC |

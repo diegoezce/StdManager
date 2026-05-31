@@ -61,7 +61,6 @@ Delete all existing, add these 2:
 ### 5. Railway Provides Automatically
 DO NOT EDIT - Railway sets these automatically:
 - `DATABASE_URL` (from PostgreSQL plugin)
-- `REDIS_URL` (from Redis plugin)
 
 ### 6. Deploy
 After setting variables, Railway will auto-redeploy both services.
