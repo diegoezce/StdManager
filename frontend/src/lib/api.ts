@@ -155,7 +155,7 @@ class APIClient {
     return response.data
   }
 
-  async getAttendanceReport(period: 'month' | 'semester' | 'year' | null, month?: number, year?: number) {
+  async getAttendanceReport(period: 'month' | 'semester' | 'year' | 'ytd' | null, month?: number, year?: number) {
     const params: Record<string, any> = {}
     if (month && year) {
       params.month = month

@@ -456,6 +456,8 @@ def attendance_report(request):
             since = today - relativedelta(months=6)
         elif period == 'year':
             since = today - relativedelta(years=1)
+        elif period == 'ytd':
+            since = date(today.year, 1, 1)
         else:
             since = today - relativedelta(months=1)
 

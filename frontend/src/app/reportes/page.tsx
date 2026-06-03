@@ -1419,6 +1419,7 @@ function MondlyCorporateDashboard({ rows }: { rows: MondlyRow[] }) {
 
 function ChartsReport() {
   const today = new Date()
+  const [viewMode, setViewMode] = useState<'month' | 'ytd'>('month')
   const [navYear, setNavYear] = useState(today.getFullYear())
   const [navMonth, setNavMonth] = useState(today.getMonth() + 1)
   const [attendanceRows, setAttendanceRows] = useState<AttendanceRow[]>([])
@@ -1428,31 +1429,38 @@ function ChartsReport() {
   const isCurrentMonth = navYear === today.getFullYear() && navMonth === today.getMonth() + 1
 
   const prevMonth = () => {
+    setViewMode('month')
     if (navMonth === 1) { setNavYear((y) => y - 1); setNavMonth(12) }
     else setNavMonth((m) => m - 1)
   }
   const nextMonth = () => {
     if (isCurrentMonth) return
+    setViewMode('month')
     if (navMonth === 12) { setNavYear((y) => y + 1); setNavMonth(1) }
     else setNavMonth((m) => m + 1)
   }
 
   useEffect(() => {
     setIsLoading(true)
-    Promise.all([
-      apiClient.getAttendanceReport(null, navMonth, navYear),
-      apiClient.getMondlyData().catch(() => ({})),
-    ]).then(([attendance, mondly]) => {
-      setAttendanceRows(attendance)
-      const list: MondlyRow[] = Object.entries(mondly as Record<string, MondlyEntry[]>).map(([email, entries]) => ({
-        email,
-        name: (entries[0] as any)?.name ?? email,
-        entries,
-      }))
-      setMondlyRows(list)
-      setIsLoading(false)
-    }).catch(() => setIsLoading(false))
-  }, [navMonth, navYear])
+    const attendanceFetch = viewMode === 'ytd'
+      ? apiClient.getAttendanceReport('ytd')
+      : apiClient.getAttendanceReport(null, navMonth, navYear)
+    Promise.all([attendanceFetch, apiClient.getMondlyData().catch(() => ({}))])
+      .then(([attendance, mondly]) => {
+        setAttendanceRows(attendance)
+        const list: MondlyRow[] = Object.entries(mondly as Record<string, MondlyEntry[]>).map(([email, entries]) => ({
+          email,
+          name: (entries[0] as any)?.name ?? email,
+          entries,
+        }))
+        setMondlyRows(list)
+        setIsLoading(false)
+      }).catch(() => setIsLoading(false))
+  }, [viewMode, navMonth, navYear])
+
+  const periodLabel = viewMode === 'ytd'
+    ? `Ene – ${MONTH_NAMES[today.getMonth()]} ${today.getFullYear()}`
+    : `${MONTH_NAMES[navMonth - 1]} ${navYear}`
 
   const attendanceChartData = useMemo(() =>
     attendanceRows
@@ -1468,8 +1476,8 @@ function ChartsReport() {
   , [attendanceRows])
 
   const mondlyPointsData = useMemo(() => {
-    const start = new Date(navYear, navMonth - 1, 1)
-    const end = new Date(navYear, navMonth, 1)
+    const start = viewMode === 'ytd' ? new Date(today.getFullYear(), 0, 1) : new Date(navYear, navMonth - 1, 1)
+    const end = viewMode === 'ytd' ? new Date() : new Date(navYear, navMonth, 1)
     return mondlyRows
       .map((r) => {
         const p = primary(r.entries)
@@ -1482,11 +1490,11 @@ function ChartsReport() {
       })
       .sort((a, b) => b.points - a.points)
       .slice(0, 20)
-  }, [mondlyRows, navMonth, navYear])
+  }, [mondlyRows, viewMode, navMonth, navYear])
 
   const mondlyTimeData = useMemo(() => {
-    const start = new Date(navYear, navMonth - 1, 1)
-    const end = new Date(navYear, navMonth, 1)
+    const start = viewMode === 'ytd' ? new Date(today.getFullYear(), 0, 1) : new Date(navYear, navMonth - 1, 1)
+    const end = viewMode === 'ytd' ? new Date() : new Date(navYear, navMonth, 1)
     return mondlyRows
       .map((r) => {
         const p = primary(r.entries)
@@ -1499,7 +1507,7 @@ function ChartsReport() {
       })
       .sort((a, b) => b.hours - a.hours)
       .slice(0, 20)
-  }, [mondlyRows, navMonth, navYear])
+  }, [mondlyRows, viewMode, navMonth, navYear])
 
   const participationData = useMemo(() => {
     const buckets = { alta: 0, media: 0, baja: 0, none: 0 }
@@ -1527,17 +1535,41 @@ function ChartsReport() {
 
   return (
     <>
-      {/* Month navigator */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center gap-4 print:hidden">
-        <button onClick={prevMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition">
+      {/* Navigator */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center gap-3 flex-wrap print:hidden">
+        <button
+          onClick={prevMonth}
+          disabled={viewMode === 'ytd'}
+          className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+        >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <span className="text-base font-semibold text-gray-800 min-w-[160px] text-center">
+        <span className={`text-base font-semibold min-w-[160px] text-center transition ${viewMode === 'ytd' ? 'text-gray-400' : 'text-gray-800'}`}>
           {MONTH_NAMES[navMonth - 1]} {navYear}
         </span>
-        <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition">
+        <button
+          onClick={nextMonth}
+          disabled={isCurrentMonth || viewMode === 'ytd'}
+          className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+        >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
         </button>
+
+        <span className="text-gray-200 select-none hidden sm:inline mx-1">|</span>
+
+        <button
+          onClick={() => setViewMode(viewMode === 'ytd' ? 'month' : 'ytd')}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+            viewMode === 'ytd'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Año completo
+        </button>
+        {viewMode === 'ytd' && (
+          <span className="text-sm text-indigo-600 font-medium">{periodLabel}</span>
+        )}
       </div>
 
       {isLoading ? (
@@ -1547,9 +1579,9 @@ function ChartsReport() {
           {/* Attendance chart */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Participación en clases</h3>
-            <p className="text-xs text-gray-400 mb-5">{MONTH_NAMES[navMonth - 1]} {navYear} · tasa de asistencia por alumno</p>
+            <p className="text-xs text-gray-400 mb-5">{periodLabel} · tasa de asistencia por alumno</p>
             {attendanceChartData.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-10">Sin registros de asistencia para este mes</p>
+              <p className="text-sm text-gray-400 text-center py-10">Sin registros de asistencia para este período</p>
             ) : (
               <ResponsiveContainer width="100%" height={attendanceHeight}>
                 <BarChart data={attendanceChartData} layout="vertical" margin={{ left: 8, right: 40, top: 0, bottom: 0 }}>
@@ -1577,7 +1609,7 @@ function ChartsReport() {
           {attendanceRows.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Distribución de participación</h3>
-              <p className="text-xs text-gray-400 mb-5">Alumnos por nivel · {MONTH_NAMES[navMonth - 1]} {navYear}</p>
+              <p className="text-xs text-gray-400 mb-5">Alumnos por nivel · {periodLabel}</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={participationData} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -1603,14 +1635,14 @@ function ChartsReport() {
           {/* Mondly charts */}
           {mondlyPointsData.length === 0 && mondlyTimeData.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-400 text-sm">
-              Sin alumnos activos en Mondly durante {MONTH_NAMES[navMonth - 1]} {navYear}.
+              Sin alumnos activos en Mondly durante {periodLabel}.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Points */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Puntos Mondly</h3>
-                <p className="text-xs text-gray-400 mb-5">Alumnos activos en {MONTH_NAMES[navMonth - 1]} {navYear} · puntos acumulados en Mondly</p>
+                <p className="text-xs text-gray-400 mb-5">Alumnos activos en {periodLabel} · puntos acumulados en Mondly</p>
                 {mondlyPointsData.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">Sin datos</p>
                 ) : (
@@ -1629,7 +1661,7 @@ function ChartsReport() {
               {/* Time */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Tiempo en Mondly</h3>
-                <p className="text-xs text-gray-400 mb-5">Alumnos activos en {MONTH_NAMES[navMonth - 1]} {navYear} · tiempo total en la plataforma</p>
+                <p className="text-xs text-gray-400 mb-5">Alumnos activos en {periodLabel} · tiempo total en la plataforma</p>
                 {mondlyTimeData.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">Sin datos</p>
                 ) : (
