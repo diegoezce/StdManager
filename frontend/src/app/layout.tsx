@@ -4,6 +4,10 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'BLEST',
   description: 'Platform for educational institution management',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
