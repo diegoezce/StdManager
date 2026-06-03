@@ -155,8 +155,15 @@ class APIClient {
     return response.data
   }
 
-  async getAttendanceReport(period: 'month' | 'semester' | 'year') {
-    const response = await this.axiosInstance.get('/reports/attendance/', { params: { period } })
+  async getAttendanceReport(period: 'month' | 'semester' | 'year' | null, month?: number, year?: number) {
+    const params: Record<string, any> = {}
+    if (month && year) {
+      params.month = month
+      params.year = year
+    } else if (period) {
+      params.period = period
+    }
+    const response = await this.axiosInstance.get('/reports/attendance/', { params })
     return response.data
   }
 

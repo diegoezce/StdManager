@@ -424,25 +424,45 @@ class EmptyClassSessionViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def attendance_report(request):
-    """Attendance report aggregated by student, filtered by period."""
+    """Attendance report aggregated by student, filtered by period or specific month/year."""
     from datetime import date
     from dateutil.relativedelta import relativedelta
 
     organization = request.user.organization
+    month_param = request.query_params.get('month')
+    year_param = request.query_params.get('year')
     period = request.query_params.get('period', 'month')  # month | semester | year
 
     today = date.today()
-    if period == 'semester':
-        since = today - relativedelta(months=6)
-    elif period == 'year':
-        since = today - relativedelta(years=1)
-    else:
-        since = today - relativedelta(months=1)
 
-    qs = Attendance.objects.filter(
-        organization=organization,
-        date__gte=since,
-    ).select_related('student__user', 'student__corporate_client', 'group')
+    if month_param and year_param:
+        try:
+            m = int(month_param)
+            y = int(year_param)
+            since = date(y, m, 1)
+            if m == 12:
+                until = date(y + 1, 1, 1)
+            else:
+                until = date(y, m + 1, 1)
+            qs = Attendance.objects.filter(
+                organization=organization,
+                date__gte=since,
+                date__lt=until,
+            ).select_related('student__user', 'student__corporate_client', 'group')
+        except (ValueError, TypeError):
+            return Response({'error': 'Invalid month or year'}, status=400)
+    else:
+        if period == 'semester':
+            since = today - relativedelta(months=6)
+        elif period == 'year':
+            since = today - relativedelta(years=1)
+        else:
+            since = today - relativedelta(months=1)
+
+        qs = Attendance.objects.filter(
+            organization=organization,
+            date__gte=since,
+        ).select_related('student__user', 'student__corporate_client', 'group')
 
     # Teachers only see students from their own groups
     if request.user.role == 'teacher':

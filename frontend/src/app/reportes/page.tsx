@@ -473,24 +473,45 @@ function AttendanceDrillDown({ studentId }: { studentId: string }) {
 // ── Attendance report ─────────────────────────────────────────────────────────
 
 function AttendanceReport() {
+  const today = new Date()
   const [rows, setRows] = useState<AttendanceRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [mode, setMode] = useState<'month' | 'period'>('month')
   const [period, setPeriod] = useState<Period>('month')
+  const [navYear, setNavYear] = useState(today.getFullYear())
+  const [navMonth, setNavMonth] = useState(today.getMonth() + 1)
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
   const [selectedGroup, setSelectedGroup] = useState<string>('all')
   const [sortKey, setSortKey] = useState<'student_name' | 'company' | 'rate' | 'total'>('student_name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  const prevMonth = () => {
+    setMode('month')
+    if (navMonth === 1) { setNavYear((y) => y - 1); setNavMonth(12) }
+    else setNavMonth((m) => m - 1)
+  }
+  const nextMonth = () => {
+    const isCurrentMonth = navYear === today.getFullYear() && navMonth === today.getMonth() + 1
+    if (isCurrentMonth) return
+    setMode('month')
+    if (navMonth === 12) { setNavYear((y) => y + 1); setNavMonth(1) }
+    else setNavMonth((m) => m + 1)
+  }
+  const isCurrentMonth = navYear === today.getFullYear() && navMonth === today.getMonth() + 1
+
   useEffect(() => {
     setIsLoading(true)
     setSelectedGroup('all')
     setExpandedId(null)
-    apiClient.getAttendanceReport(period).then((data) => {
+    const req = mode === 'month'
+      ? apiClient.getAttendanceReport(null, navMonth, navYear)
+      : apiClient.getAttendanceReport(period)
+    req.then((data) => {
       setRows(data)
       setIsLoading(false)
     }).catch(() => setIsLoading(false))
-  }, [period])
+  }, [mode, period, navMonth, navYear])
 
   const companies = useMemo(() =>
     Array.from(new Set(rows.map((r) => r.company).filter(Boolean))).sort() as string[]
@@ -538,14 +559,40 @@ function AttendanceReport() {
   return (
     <>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col gap-3 print:hidden">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600 shrink-0">Period:</span>
-          <div className="flex gap-1">
-            {PERIODS.map((p) => (
-              <button key={p.value} onClick={() => setPeriod(p.value)} className={`px-3 py-1 rounded-full text-sm font-medium transition ${period === p.value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                {p.label}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Month navigator */}
+          <div className="flex items-center gap-2">
+            <button onClick={prevMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button
+              onClick={() => setMode('month')}
+              className={`text-sm font-semibold min-w-[130px] text-center px-2 py-1 rounded-lg transition ${mode === 'month' ? 'text-indigo-700 bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              {MONTH_NAMES[navMonth - 1]} {navYear}
+            </button>
+            <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+
+          {/* Separator */}
+          <span className="text-gray-200 select-none hidden sm:inline">|</span>
+
+          {/* Period pills */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-400 shrink-0">o ver:</span>
+            <div className="flex gap-1">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => { setPeriod(p.value); setMode('period') }}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition ${mode === 'period' && period === p.value ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         {companies.length > 0 && <FilterPills label="Company" options={companies} value={selectedCompany} onChange={setSelectedCompany} />}
@@ -625,7 +672,7 @@ function AttendanceReport() {
               </table>
             </div>
             <div className="px-6 py-3 border-t border-gray-50 bg-gray-50 text-xs text-gray-400">
-              {filtered.length} student{filtered.length !== 1 ? 's' : ''} — {PERIODS.find((p) => p.value === period)?.label}
+              {filtered.length} student{filtered.length !== 1 ? 's' : ''} — {mode === 'month' ? `${MONTH_NAMES[navMonth - 1]} ${navYear}` : PERIODS.find((p) => p.value === period)?.label}
               <span className="ml-2 text-gray-300">· click para ver detalle</span>
             </div>
           </div>
@@ -1463,13 +1510,13 @@ function MondlyReport() {
 
 type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers' | 'mondly'
 
-const TABS: { value: Tab; label: string; teacherLabel?: string; teacherHidden?: boolean; ownerOnly?: boolean; teacherVisible?: boolean }[] = [
-  { value: 'students', label: 'Students', teacherHidden: true },
+const TABS: { value: Tab; label: string; teacherLabel?: string; teacherHidden?: boolean; ownerOnly?: boolean; teacherVisible?: boolean; corporateVisible?: boolean }[] = [
+  { value: 'students', label: 'Students', teacherHidden: true, corporateVisible: true },
   { value: 'attendance', label: 'Attendance' },
   { value: 'groups', label: 'Groups', teacherHidden: true },
   { value: 'levels', label: 'Levels', teacherHidden: true },
   { value: 'teachers', label: 'Teachers', teacherLabel: 'Mis horas', ownerOnly: true, teacherVisible: true },
-  { value: 'mondly', label: 'Mondly', teacherHidden: true },
+  { value: 'mondly', label: 'Mondly', teacherHidden: true, corporateVisible: true },
 ]
 
 export default function ReportesPage() {
@@ -1493,7 +1540,8 @@ export default function ReportesPage() {
   const isCorporateClient = user?.role === 'corporate_client'
   const visibleTabs = TABS.filter((t) => {
     if (isTeacher) return t.teacherVisible || (!t.teacherHidden && !t.ownerOnly)
-    if (isCorporateClient && t.teacherHidden) return false
+    if (isCorporateClient && t.teacherHidden && !t.corporateVisible) return false
+    if (isCorporateClient && t.ownerOnly) return false
     if (t.ownerOnly && !isOwnerOrManager) return false
     return true
   })
