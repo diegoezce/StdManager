@@ -1187,7 +1187,7 @@ function TeachersReport() {
 
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, Legend, CartesianGrid,
 } from 'recharts'
 
 type MondlyRow = { email: string; name: string; entries: MondlyEntry[] }
@@ -1415,6 +1415,181 @@ function MondlyCorporateDashboard({ rows }: { rows: MondlyRow[] }) {
   )
 }
 
+// ── Charts report ─────────────────────────────────────────────────────────────
+
+function ChartsReport() {
+  const today = new Date()
+  const [navYear, setNavYear] = useState(today.getFullYear())
+  const [navMonth, setNavMonth] = useState(today.getMonth() + 1)
+  const [attendanceRows, setAttendanceRows] = useState<AttendanceRow[]>([])
+  const [mondlyRows, setMondlyRows] = useState<MondlyRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const isCurrentMonth = navYear === today.getFullYear() && navMonth === today.getMonth() + 1
+
+  const prevMonth = () => {
+    if (navMonth === 1) { setNavYear((y) => y - 1); setNavMonth(12) }
+    else setNavMonth((m) => m - 1)
+  }
+  const nextMonth = () => {
+    if (isCurrentMonth) return
+    if (navMonth === 12) { setNavYear((y) => y + 1); setNavMonth(1) }
+    else setNavMonth((m) => m + 1)
+  }
+
+  useEffect(() => {
+    setIsLoading(true)
+    Promise.all([
+      apiClient.getAttendanceReport(null, navMonth, navYear),
+      apiClient.getMondlyData().catch(() => ({})),
+    ]).then(([attendance, mondly]) => {
+      setAttendanceRows(attendance)
+      const list: MondlyRow[] = Object.entries(mondly as Record<string, MondlyEntry[]>).map(([email, entries]) => ({
+        email,
+        name: (entries[0] as any)?.name ?? email,
+        entries,
+      }))
+      setMondlyRows(list)
+      setIsLoading(false)
+    }).catch(() => setIsLoading(false))
+  }, [navMonth, navYear])
+
+  const attendanceChartData = useMemo(() =>
+    attendanceRows
+      .filter((r) => r.total > 0)
+      .sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0))
+      .map((r) => ({
+        name: r.student_name,
+        rate: r.rate ?? 0,
+        present: r.present,
+        absent: r.absent,
+        total: r.total,
+      }))
+  , [attendanceRows])
+
+  const mondlyPointsData = useMemo(() =>
+    mondlyRows
+      .map((r) => ({ name: r.name, points: primary(r.entries)?.points ?? 0 }))
+      .filter((r) => r.points > 0)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 20)
+  , [mondlyRows])
+
+  const mondlyTimeData = useMemo(() =>
+    mondlyRows
+      .map((r) => ({ name: r.name, hours: Math.round((primary(r.entries)?.learning_minutes ?? 0) / 60) }))
+      .filter((r) => r.hours > 0)
+      .sort((a, b) => b.hours - a.hours)
+      .slice(0, 20)
+  , [mondlyRows])
+
+  const barColor = (rate: number) =>
+    rate >= 80 ? '#22c55e' : rate >= 60 ? '#f59e0b' : '#ef4444'
+
+  const attendanceHeight = Math.max(200, attendanceChartData.length * 28)
+  const mondlyPointsHeight = Math.max(160, mondlyPointsData.length * 28)
+  const mondlyTimeHeight = Math.max(160, mondlyTimeData.length * 28)
+
+  return (
+    <>
+      {/* Month navigator */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center gap-4 print:hidden">
+        <button onClick={prevMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <span className="text-base font-semibold text-gray-800 min-w-[160px] text-center">
+          {MONTH_NAMES[navMonth - 1]} {navYear}
+        </span>
+        <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
+      ) : (
+        <div className="space-y-6">
+          {/* Attendance chart */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Participación en clases</h3>
+            <p className="text-xs text-gray-400 mb-5">{MONTH_NAMES[navMonth - 1]} {navYear} · tasa de asistencia por alumno</p>
+            {attendanceChartData.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-10">Sin registros de asistencia para este mes</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={attendanceHeight}>
+                <BarChart data={attendanceChartData} layout="vertical" margin={{ left: 8, right: 40, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                  <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={130} />
+                  <Tooltip
+                    formatter={(value, _name, props) => {
+                      const { present, absent, total } = props.payload
+                      return [`${value}%  ·  ${present}P / ${absent}A / ${total} clases`, '']
+                    }}
+                    labelFormatter={(label) => label}
+                  />
+                  <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
+                    {attendanceChartData.map((entry, i) => (
+                      <Cell key={i} fill={barColor(entry.rate)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Mondly charts */}
+          {mondlyPointsData.length === 0 && mondlyTimeData.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-400 text-sm">
+              Sin datos de Mondly disponibles. Importá un reporte desde la tab Mondly.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Points */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Puntos Mondly</h3>
+                <p className="text-xs text-gray-400 mb-5">Top {mondlyPointsData.length} alumnos por puntos acumulados</p>
+                {mondlyPointsData.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-8">Sin datos</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={mondlyPointsHeight}>
+                    <BarChart data={mondlyPointsData} layout="vertical" margin={{ left: 8, right: 40, top: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => v.toLocaleString()} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={130} />
+                      <Tooltip formatter={(v) => [Number(v).toLocaleString() + ' pts', 'Puntos']} />
+                      <Bar dataKey="points" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* Time */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Tiempo en Mondly</h3>
+                <p className="text-xs text-gray-400 mb-5">Top {mondlyTimeData.length} alumnos por horas en la plataforma</p>
+                {mondlyTimeData.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-8">Sin datos</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={mondlyTimeHeight}>
+                    <BarChart data={mondlyTimeData} layout="vertical" margin={{ left: 8, right: 40, top: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}h`} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={130} />
+                      <Tooltip formatter={(v) => [`${v}h`, 'Tiempo']} />
+                      <Bar dataKey="hours" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
 function MondlyReport() {
   const { user } = useAuth()
   const isCorporate = user?.role === 'corporate_client'
@@ -1508,7 +1683,7 @@ function MondlyReport() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers' | 'mondly'
+type Tab = 'students' | 'attendance' | 'groups' | 'levels' | 'teachers' | 'mondly' | 'charts'
 
 const TABS: { value: Tab; label: string; teacherLabel?: string; teacherHidden?: boolean; ownerOnly?: boolean; teacherVisible?: boolean; corporateVisible?: boolean }[] = [
   { value: 'students', label: 'Students', teacherHidden: true, corporateVisible: true },
@@ -1517,6 +1692,7 @@ const TABS: { value: Tab; label: string; teacherLabel?: string; teacherHidden?: 
   { value: 'levels', label: 'Levels', teacherHidden: true },
   { value: 'teachers', label: 'Teachers', teacherLabel: 'Mis horas', ownerOnly: true, teacherVisible: true },
   { value: 'mondly', label: 'Mondly', teacherHidden: true, corporateVisible: true },
+  { value: 'charts', label: 'Gráficos', teacherHidden: true, corporateVisible: true },
 ]
 
 export default function ReportesPage() {
@@ -1591,6 +1767,7 @@ export default function ReportesPage() {
           {activeTab === 'levels' && <LevelsReport />}
           {activeTab === 'teachers' && <TeachersReport />}
           {activeTab === 'mondly' && <MondlyReport />}
+          {activeTab === 'charts' && <ChartsReport />}
         </div>
       </div>
 
