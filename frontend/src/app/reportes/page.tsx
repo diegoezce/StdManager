@@ -1467,21 +1467,39 @@ function ChartsReport() {
       }))
   , [attendanceRows])
 
-  const mondlyPointsData = useMemo(() =>
-    mondlyRows
-      .map((r) => ({ name: r.name, points: primary(r.entries)?.points ?? 0 }))
-      .filter((r) => r.points > 0)
+  const mondlyPointsData = useMemo(() => {
+    const start = new Date(navYear, navMonth - 1, 1)
+    const end = new Date(navYear, navMonth, 1)
+    return mondlyRows
+      .map((r) => {
+        const p = primary(r.entries)
+        return { name: r.name, points: p?.points ?? 0, lastActive: p?.last_active_on ?? null }
+      })
+      .filter((r) => {
+        if (!r.lastActive || r.points === 0) return false
+        const d = new Date(r.lastActive)
+        return d >= start && d < end
+      })
       .sort((a, b) => b.points - a.points)
       .slice(0, 20)
-  , [mondlyRows])
+  }, [mondlyRows, navMonth, navYear])
 
-  const mondlyTimeData = useMemo(() =>
-    mondlyRows
-      .map((r) => ({ name: r.name, hours: Math.round((primary(r.entries)?.learning_minutes ?? 0) / 60) }))
-      .filter((r) => r.hours > 0)
+  const mondlyTimeData = useMemo(() => {
+    const start = new Date(navYear, navMonth - 1, 1)
+    const end = new Date(navYear, navMonth, 1)
+    return mondlyRows
+      .map((r) => {
+        const p = primary(r.entries)
+        return { name: r.name, hours: Math.round((p?.learning_minutes ?? 0) / 60), lastActive: p?.last_active_on ?? null }
+      })
+      .filter((r) => {
+        if (!r.lastActive || r.hours === 0) return false
+        const d = new Date(r.lastActive)
+        return d >= start && d < end
+      })
       .sort((a, b) => b.hours - a.hours)
       .slice(0, 20)
-  , [mondlyRows])
+  }, [mondlyRows, navMonth, navYear])
 
   const barColor = (rate: number) =>
     rate >= 80 ? '#22c55e' : rate >= 60 ? '#f59e0b' : '#ef4444'
@@ -1541,14 +1559,14 @@ function ChartsReport() {
           {/* Mondly charts */}
           {mondlyPointsData.length === 0 && mondlyTimeData.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 text-center text-gray-400 text-sm">
-              Sin datos de Mondly disponibles. Importá un reporte desde la tab Mondly.
+              Sin alumnos activos en Mondly durante {MONTH_NAMES[navMonth - 1]} {navYear}.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Points */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Puntos Mondly</h3>
-                <p className="text-xs text-gray-400 mb-5">Top {mondlyPointsData.length} alumnos por puntos acumulados</p>
+                <p className="text-xs text-gray-400 mb-5">Alumnos activos en {MONTH_NAMES[navMonth - 1]} {navYear} · puntos acumulados en Mondly</p>
                 {mondlyPointsData.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">Sin datos</p>
                 ) : (
@@ -1567,7 +1585,7 @@ function ChartsReport() {
               {/* Time */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Tiempo en Mondly</h3>
-                <p className="text-xs text-gray-400 mb-5">Top {mondlyTimeData.length} alumnos por horas en la plataforma</p>
+                <p className="text-xs text-gray-400 mb-5">Alumnos activos en {MONTH_NAMES[navMonth - 1]} {navYear} · tiempo total en la plataforma</p>
                 {mondlyTimeData.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">Sin datos</p>
                 ) : (
