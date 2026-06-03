@@ -1501,6 +1501,23 @@ function ChartsReport() {
       .slice(0, 20)
   }, [mondlyRows, navMonth, navYear])
 
+  const participationData = useMemo(() => {
+    const buckets = { alta: 0, media: 0, baja: 0, none: 0 }
+    attendanceRows.forEach((r) => {
+      const rate = r.rate
+      if (rate === null || rate === 0) buckets.none++
+      else if (rate >= 80) buckets.alta++
+      else if (rate >= 60) buckets.media++
+      else buckets.baja++
+    })
+    return [
+      { name: 'Alta',         value: buckets.alta,  color: '#22c55e' },
+      { name: 'Media',        value: buckets.media, color: '#f59e0b' },
+      { name: 'Baja',         value: buckets.baja,  color: '#ef4444' },
+      { name: 'No participó', value: buckets.none,  color: '#9ca3af' },
+    ]
+  }, [attendanceRows])
+
   const barColor = (rate: number) =>
     rate >= 80 ? '#22c55e' : rate >= 60 ? '#f59e0b' : '#ef4444'
 
@@ -1555,6 +1572,33 @@ function ChartsReport() {
               </ResponsiveContainer>
             )}
           </div>
+
+          {/* Participation distribution chart */}
+          {attendanceRows.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Distribución de participación</h3>
+              <p className="text-xs text-gray-400 mb-5">Alumnos por nivel · {MONTH_NAMES[navMonth - 1]} {navYear}</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={participationData} margin={{ left: 0, right: 16, top: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 500 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(value) => {
+                      const total = attendanceRows.length
+                      const pct = total > 0 ? Math.round(Number(value) / total * 100) : 0
+                      return [`${value} alumno${value !== 1 ? 's' : ''} (${pct}%)`, '']
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={80}>
+                    {participationData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           {/* Mondly charts */}
           {mondlyPointsData.length === 0 && mondlyTimeData.length === 0 ? (
