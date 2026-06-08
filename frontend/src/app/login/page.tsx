@@ -15,10 +15,6 @@ export default function LoginPage() {
   const [localError, setLocalError] = useState('')
   const [showHelpModal, setShowHelpModal] = useState(false)
 
-  // Only show Google sign-in if client ID is configured (not placeholder)
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  const hasGoogleConfig = googleClientId && googleClientId !== 'placeholder'
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLocalError('')
@@ -144,8 +140,7 @@ export default function LoginPage() {
                 {isLoading ? 'Ingresando...' : 'Ingresar'}
               </button>
 
-              {hasGoogleConfig && (
-                <>
+              <>
                   <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-slate-200" />
@@ -184,8 +179,7 @@ export default function LoginPage() {
                       locale="es"
                     />
                   </div>
-                </>
-              )}
+              </>
             </form>
 
             <p className="mt-6 text-center text-xs text-slate-400">
