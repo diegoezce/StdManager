@@ -3,7 +3,8 @@ from django.db.models import Count, Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import serializers as drf_serializers
 
 from .models import Organization, License
 from .serializers import (
@@ -19,6 +20,13 @@ from apps.core.permissions import IsSuperAdmin, IsOwner, IsAdmin
 logger = logging.getLogger(__name__)
 
 
+class PublicOrganizationSerializer(drf_serializers.ModelSerializer):
+    """Minimal org info for the post-login selection screen."""
+    class Meta:
+        model = Organization
+        fields = ('id', 'name', 'brand_name', 'slug')
+
+
 class OrganizationViewSet(viewsets.ModelViewSet):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
@@ -30,7 +38,31 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             return OrganizationCreateUpdateSerializer
         if self.action == 'list' and self.request.user.role == 'super_admin':
             return OrganizationSummarySerializer
+        if self.action == 'public_list':
+            return PublicOrganizationSerializer
         return OrganizationSerializer
+
+    def get_permissions(self):
+        if self.action == 'public_list':
+            return [AllowAny()]
+        if self.action in ['create', 'update_status', 'update_license']:
+            return [IsSuperAdmin()]
+        elif self.action in ['update', 'partial_update']:
+            return [(IsAdmin | IsSuperAdmin)()]
+        elif self.action in ['destroy', 'create_owner', 'assign_owner']:
+            return [IsSuperAdmin()]
+        elif self.action == 'transfer_ownership':
+            return [(IsOwner | IsSuperAdmin)()]
+        elif self.action in ['approve_user', 'pending_users']:
+            return [(IsAdmin | IsSuperAdmin)()]
+        return [IsAuthenticated()]
+
+    @action(detail=False, methods=['get'], url_path='public')
+    def public_list(self, request):
+        """Public endpoint listing active organizations (for org selection screen)."""
+        orgs = Organization.objects.filter(is_active=True)
+        serializer = self.get_serializer(orgs, many=True)
+        return Response(serializer.data)
 
     def get_queryset(self):
         user = self.request.user
@@ -44,17 +76,6 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         elif user.organization:
             return Organization.objects.filter(id=user.organization_id).select_related('license')
         return Organization.objects.none()
-
-    def get_permissions(self):
-        if self.action in ['create', 'update_status', 'update_license']:
-            return [IsSuperAdmin()]
-        elif self.action in ['update', 'partial_update']:
-            return [(IsAdmin | IsSuperAdmin)()]
-        elif self.action in ['destroy', 'create_owner', 'assign_owner']:
-            return [IsSuperAdmin()]
-        elif self.action == 'transfer_ownership':
-            return [(IsOwner | IsSuperAdmin)()]
-        return [IsAuthenticated()]
 
     @action(detail=True, methods=['get'])
     def license(self, request, slug=None):
@@ -215,6 +236,117 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             'previous_organization_id': str(old_org_id) if old_org_id else None,
             'demoted_previous_owner': current_owner.email if current_owner else None,
         })
+
+    @action(detail=True, methods=['get'], url_path='pending-users')
+    def pending_users(self, request, slug=None):
+        """List users who requested access to this org and are still waiting."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        from apps.accounts.serializers import UserSerializer
+
+        organization = self.get_object()
+
+        if request.user.role != 'super_admin' and request.user.organization_id != organization.id:
+            return Response({'error': 'No tienes acceso a esta organización.'}, status=status.HTTP_403_FORBIDDEN)
+
+        pending = User.objects.filter(
+            requested_organization=organization,
+            organization__isnull=True,
+            is_active=True,
+        )
+        return Response(UserSerializer(pending, many=True).data)
+
+    @action(detail=True, methods=['post'], url_path='approve-user')
+    def approve_user(self, request, slug=None):
+        """Owner/manager/admin: assign an existing Google user (no org yet) to this org."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        from apps.accounts.serializers import UserSerializer
+
+        organization = self.get_object()
+
+        # Non-super-admins can only approve into their own org
+        if request.user.role != 'super_admin' and request.user.organization_id != organization.id:
+            return Response({'error': 'No tienes acceso a esta organización.'}, status=status.HTTP_403_FORBIDDEN)
+
+        email = (request.data.get('email') or '').strip().lower()
+        role = (request.data.get('role') or 'student').strip()
+
+        if not email:
+            return Response({'error': 'El email es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_roles = [r[0] for r in User.ROLE_CHOICES if r[0] not in ('super_admin', 'owner')]
+        if role not in valid_roles:
+            return Response({'error': f'Rol inválido. Opciones: {valid_roles}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'error': 'No existe ningún usuario con ese email. Usá "Invitar con Google" para usuarios nuevos.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.organization_id:
+            return Response({'error': f'Este usuario ya pertenece a una organización ({user.organization}).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.organization = organization
+        user.role = role
+        user.requested_organization = None
+        user.save(update_fields=['organization', 'role', 'requested_organization'])
+
+        logger.info('User %s approved into org %s with role %s by %s', user.email, organization.slug, role, request.user.email)
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='create-my-org')
+    def create_my_org(self, request):
+        """Any authenticated user without an org can self-create one (90-day free trial)."""
+        import uuid
+        from datetime import timedelta
+        from django.utils import timezone
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from apps.accounts.serializers import UserSerializer
+
+        user = request.user
+        if user.organization_id:
+            return Response({'error': 'Ya perteneces a una organización.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        name = (request.data.get('name') or '').strip()
+        if not name:
+            return Response({'error': 'El nombre de la organización es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        license_number = f'TRIAL-{uuid.uuid4().hex[:10].upper()}'
+        try:
+            org = Organization.objects.create(
+                name=name,
+                license_number=license_number,
+                status='trial',
+                is_active=True,
+            )
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = timezone.now().date()
+        License.objects.create(
+            organization=org,
+            type='free',
+            max_students=50,
+            max_teachers=5,
+            max_groups=10,
+            valid_from=today,
+            valid_to=today + timedelta(days=90),
+            status='active',
+        )
+
+        user.organization = org
+        user.role = 'owner'
+        user.save(update_fields=['organization', 'role'])
+
+        logger.info('Self-service org "%s" created by %s', org.slug, user.email)
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user).data,
+        }, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='transfer-ownership')
     def transfer_ownership(self, request, slug=None):

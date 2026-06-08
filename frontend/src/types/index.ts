@@ -9,6 +9,7 @@ export interface User {
   organization_slug: string
   brand_name: string
   is_active: boolean
+  last_login: string | null
   created_at: string
   corporate_client?: string | null
 }
@@ -16,6 +17,7 @@ export interface User {
 export interface Organization {
   id: string
   name: string
+  brand_name: string
   slug: string
   license_number: string
   status: 'trial' | 'active' | 'suspended' | 'inactive'

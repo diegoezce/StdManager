@@ -1,16 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { BlastLogo } from '@/components/BlastLogo'
+import { GoogleLogin } from '@react-oauth/google'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isLoading } = useAuth()
+  const { login, googleLogin, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [localError, setLocalError] = useState('')
+  const [showHelpModal, setShowHelpModal] = useState(false)
+
+  // Only show Google sign-in if client ID is configured (not placeholder)
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  const hasGoogleConfig = googleClientId && googleClientId !== 'placeholder'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,8 +29,13 @@ export default function LoginPage() {
     }
 
     try {
-      await login(email, password)
-      router.push('/dashboard')
+      const response = await login(email, password)
+      // If user has no organization, redirect to org selection
+      if (response && !response.user?.organization_id) {
+        router.push('/seleccionar-organizacion')
+      } else {
+        router.push('/dashboard')
+      }
     } catch (err: any) {
       const msg =
         err?.response?.data?.detail ||
@@ -35,7 +47,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Top bar with subtle brand */}
       <header className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-slate-200 bg-white">
         <BlastLogo size="sm" showWordmark />
         <span className="text-xs text-slate-400 tracking-wider uppercase hidden sm:inline">
@@ -45,7 +56,6 @@ export default function LoginPage() {
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-5xl grid md:grid-cols-2 gap-12 items-center">
-          {/* Brand side */}
           <div className="hidden md:flex flex-col gap-6">
             <BlastLogo size="xl" showWordmark showTagline />
             <h1
@@ -67,7 +77,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Login card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 sm:p-10">
             <div className="md:hidden mb-6 flex justify-center">
               <BlastLogo size="lg" showWordmark />
@@ -90,10 +99,7 @@ export default function LoginPage() {
               )}
 
               <div>
-                <label
-                  htmlFor="email-address"
-                  className="block text-xs font-medium text-slate-700 uppercase tracking-wider mb-1.5"
-                >
+                <label htmlFor="email-address" className="block text-xs font-medium text-slate-700 uppercase tracking-wider mb-1.5">
                   Email
                 </label>
                 <input
@@ -112,10 +118,7 @@ export default function LoginPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    htmlFor="password"
-                    className="block text-xs font-medium text-slate-700 uppercase tracking-wider"
-                  >
+                  <label htmlFor="password" className="block text-xs font-medium text-slate-700 uppercase tracking-wider">
                     Contraseña
                   </label>
                 </div>
@@ -140,14 +143,90 @@ export default function LoginPage() {
               >
                 {isLoading ? 'Ingresando...' : 'Ingresar'}
               </button>
+
+              {hasGoogleConfig && (
+                <>
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200" />
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-white px-2 text-slate-400 uppercase">
+                        O continúa con
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <GoogleLogin
+                      onSuccess={async (credentialResponse) => {
+                        try {
+                          setLocalError('')
+                          const response = await googleLogin(credentialResponse.credential!)
+                          // If user has no organization, redirect to org selection
+                          if (response && !response.user?.organization_id) {
+                            router.push('/seleccionar-organizacion')
+                          } else {
+                            router.push('/dashboard')
+                          }
+                        } catch {
+                          setLocalError('Error al iniciar sesión con Google')
+                        }
+                      }}
+                      onError={() => {
+                        setLocalError('Error en la autenticación con Google')
+                      }}
+                      size="large"
+                      width="100%"
+                      shape="rectangular"
+                      theme="outline"
+                      text="signin_with"
+                      locale="es"
+                    />
+                  </div>
+                </>
+              )}
             </form>
 
             <p className="mt-6 text-center text-xs text-slate-400">
               Al ingresar aceptas los términos institucionales.
             </p>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="text-xs text-slate-400 hover:text-slate-600 transition"
+              >
+                ¿Necesitás ayuda para ingresar?
+              </button>
+            </div>
           </div>
         </div>
       </main>
+
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full text-center">
+            <div className="text-3xl mb-3">🔑</div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">¿Problemas para ingresar?</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Escribinos y te ayudamos a recuperar el acceso a tu cuenta.
+            </p>
+            <a
+              href="mailto:info@blestlearning.com?subject=Ayuda%20para%20ingresar%20a%20BLEST"
+              className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition text-sm mb-3"
+            >
+              info@blestlearning.com
+            </a>
+            <button
+              onClick={() => setShowHelpModal(false)}
+              className="w-full text-sm text-slate-500 hover:text-slate-700 transition"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
       <footer className="px-6 sm:px-10 py-5 border-t border-slate-200 bg-white">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">

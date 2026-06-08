@@ -7,10 +7,11 @@ User = get_user_model()
 
 class LicenseSerializer(serializers.ModelSerializer):
     is_expired = serializers.ReadOnlyField()
+    days_remaining = serializers.ReadOnlyField()
 
     class Meta:
         model = License
-        fields = ('id', 'type', 'max_students', 'max_teachers', 'max_groups', 'valid_from', 'valid_to', 'status', 'is_expired', 'created_at')
+        fields = ('id', 'type', 'max_students', 'max_teachers', 'max_groups', 'valid_from', 'valid_to', 'status', 'is_expired', 'days_remaining', 'created_at')
         read_only_fields = ('id', 'created_at')
 
 

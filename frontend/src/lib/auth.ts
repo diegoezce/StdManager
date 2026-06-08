@@ -11,6 +11,8 @@ interface User {
   organization_name: string
   organization_slug: string
   brand_name: string
+  organization_status: 'trial' | 'active' | 'suspended' | 'inactive' | null
+  trial_days_remaining: number | null
   is_active: boolean
 }
 
@@ -18,7 +20,10 @@ interface AuthStore {
   user: User | null
   isLoading: boolean
   error: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<{ user: User }>
+  googleLogin: (credential: string) => Promise<{ user: User }>
+  selectOrganization: (slug: string) => Promise<void>
+  createMyOrg: (name: string) => Promise<void>
   logout: () => void
   me: () => Promise<void>
   hasRole: (roles: string | string[]) => boolean
@@ -37,9 +42,62 @@ export const useAuth = create<AuthStore>((set, get) => ({
       localStorage.setItem('refresh_token', response.refresh)
       localStorage.setItem('user_role', response.user.role)
       set({ user: response.user, isLoading: false })
+      return response
     } catch (error: any) {
       set({
         error: error.response?.data?.detail || 'Login failed',
+        isLoading: false,
+      })
+      throw error
+    }
+  },
+
+  googleLogin: async (credential: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const response = await apiClient.googleLogin(credential)
+      localStorage.setItem('access_token', response.access)
+      localStorage.setItem('refresh_token', response.refresh)
+      localStorage.setItem('user_role', response.user.role)
+      set({ user: response.user, isLoading: false })
+      return response
+    } catch (error: any) {
+      set({
+        error: error.response?.data?.error || 'Error al iniciar sesión con Google',
+        isLoading: false,
+      })
+      throw error
+    }
+  },
+
+  createMyOrg: async (name: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const response = await apiClient.createMyOrg(name)
+      localStorage.setItem('access_token', response.access)
+      localStorage.setItem('refresh_token', response.refresh)
+      localStorage.setItem('user_role', response.user.role)
+      set({ user: response.user, isLoading: false })
+    } catch (error: any) {
+      set({
+        error: error.response?.data?.error || 'Error al crear la organización',
+        isLoading: false,
+      })
+      throw error
+    }
+  },
+
+  selectOrganization: async (slug: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const response = await apiClient.selectOrganization(slug)
+      localStorage.setItem('access_token', response.access)
+      localStorage.setItem('refresh_token', response.refresh)
+      localStorage.setItem('user_role', response.user.role)
+      set({ user: response.user, isLoading: false })
+    } catch (error: any) {
+      set({
+        error: error.response?.data?.error || 'Error al seleccionar organización',
         isLoading: false,
       })
       throw error
@@ -72,3 +130,4 @@ export const useAuth = create<AuthStore>((set, get) => ({
     return roleArray.includes(user.role)
   },
 }))
+

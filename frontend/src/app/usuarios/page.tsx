@@ -58,6 +58,23 @@ export default function UsuariosPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Invite by Google modal
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('student')
+  const [isInviting, setIsInviting] = useState(false)
+
+  // Pending access requests
+  const [pendingUsers, setPendingUsers] = useState<User[]>([])
+  const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({})
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+
+  // Approve existing Google user modal (manual email entry)
+  const [showApproveModal, setShowApproveModal] = useState(false)
+  const [approveEmail, setApproveEmail] = useState('')
+  const [approveRole, setApproveRole] = useState('student')
+  const [isApproving, setIsApproving] = useState(false)
+
   // Change password modal
   const [changingPasswordFor, setChangingPasswordFor] = useState<User | null>(null)
   const [newPassword, setNewPassword] = useState('')
@@ -107,12 +124,69 @@ export default function UsuariosPage() {
     Promise.all([
       apiClient.getUsers(),
       apiClient.getCorporateClients(),
-    ]).then(([usersRes, clientsRes]) => {
+      user.organization_slug ? apiClient.getPendingUsers(user.organization_slug) : Promise.resolve([]),
+    ]).then(([usersRes, clientsRes, pendingRes]) => {
       setUsers(usersRes.results || usersRes)
       setCorporateClients(clientsRes.results || clientsRes)
+      setPendingUsers(pendingRes)
+      const roles: Record<string, string> = {}
+      pendingRes.forEach((u: User) => { roles[u.id] = 'student' })
+      setPendingRoles(roles)
       setIsLoading(false)
     })
   }, [user])
+
+  const handleApprovePending = async (pendingUser: User) => {
+    if (!user?.organization_slug) return
+    setApprovingId(pendingUser.id)
+    try {
+      await apiClient.approveUser(user.organization_slug, pendingUser.email, pendingRoles[pendingUser.id] || 'student')
+      setPendingUsers((prev) => prev.filter((u) => u.id !== pendingUser.id))
+      const response = await apiClient.getUsers()
+      setUsers(response.results || response)
+      toast.success(`Acceso aprobado para ${pendingUser.email}`)
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error))
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleApprove = async () => {
+    if (!approveEmail.trim() || !user?.organization_slug) return
+    setIsApproving(true)
+    try {
+      await apiClient.approveUser(user.organization_slug, approveEmail.trim(), approveRole)
+      const response = await apiClient.getUsers()
+      setUsers(response.results || response)
+      setShowApproveModal(false)
+      setApproveEmail('')
+      setApproveRole('student')
+      toast.success(`Acceso aprobado para ${approveEmail}`)
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error))
+    } finally {
+      setIsApproving(false)
+    }
+  }
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return
+    setIsInviting(true)
+    try {
+      await apiClient.register({ email: inviteEmail.trim(), role: inviteRole })
+      const response = await apiClient.getUsers()
+      setUsers(response.results || response)
+      setShowInviteModal(false)
+      setInviteEmail('')
+      setInviteRole('student')
+      toast.success(`Invitación lista — ${inviteEmail} puede ingresar con Google`)
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error))
+    } finally {
+      setIsInviting(false)
+    }
+  }
 
   const openCreateForm = () => {
     setFormData({ email: '', first_name: '', last_name: '', role: 'student', password: generatePassword(), corporate_client: '' })
@@ -316,6 +390,18 @@ export default function UsuariosPage() {
                   </button>
                 )}
                 <button
+                  onClick={() => { setShowApproveModal(true); setApproveEmail(''); setApproveRole('student') }}
+                  className="bg-white border border-green-300 hover:bg-green-50 text-green-700 font-medium py-2 px-4 rounded-md transition text-sm"
+                >
+                  Aprobar acceso
+                </button>
+                <button
+                  onClick={() => { setShowInviteModal(true); setInviteEmail(''); setInviteRole('student') }}
+                  className="bg-white border border-indigo-300 hover:bg-indigo-50 text-indigo-700 font-medium py-2 px-4 rounded-md transition text-sm"
+                >
+                  Invitar con Google
+                </button>
+                <button
                   onClick={openCreateForm}
                   className="bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2 px-4 rounded-md transition"
                 >
@@ -429,6 +515,41 @@ export default function UsuariosPage() {
             </form>
           </Modal>
 
+          {/* Pending access requests */}
+          {pendingUsers.length > 0 && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-amber-900 mb-3">
+                Solicitudes de acceso pendientes ({pendingUsers.length})
+              </h3>
+              <div className="space-y-2">
+                {pendingUsers.map((u) => (
+                  <div key={u.id} className="bg-white border border-amber-100 rounded-lg px-4 py-3 flex items-center gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">
+                        {u.first_name || u.last_name ? `${u.first_name} ${u.last_name}`.trim() : '(sin nombre aún)'}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                    </div>
+                    <Select
+                      size="sm"
+                      value={pendingRoles[u.id] || 'student'}
+                      onChange={(val) => setPendingRoles((prev) => ({ ...prev, [u.id]: val }))}
+                      options={assignableRoles.filter((r) => r.value !== 'owner').map((r) => ({ value: r.value, label: r.label }))}
+                      className="w-32"
+                    />
+                    <button
+                      onClick={() => handleApprovePending(u)}
+                      disabled={approvingId === u.id}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-md transition"
+                    >
+                      {approvingId === u.id ? '...' : 'Aprobar'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Search */}
           <div className="mb-4">
             <input
@@ -501,7 +622,7 @@ export default function UsuariosPage() {
                             {corporateClients.find((c: any) => c.id === u.corporate_client)?.company_name || u.corporate_client}
                           </p>
                         )}
-                        <p className="flex items-center gap-1.5">
+                        <p className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs text-gray-400 uppercase tracking-wide">Estado</span>
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -510,6 +631,11 @@ export default function UsuariosPage() {
                           >
                             {u.is_active ? 'Activo' : 'Inactivo'}
                           </span>
+                          {!u.last_login && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                              Pendiente de primer login
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -650,6 +776,104 @@ export default function UsuariosPage() {
             </button>
             <button onClick={() => { setShowTransferModal(false); setTransferTargetId('') }}
               className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        title="Aprobar acceso"
+      >
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+            <p className="text-sm text-green-800">
+              Para usuarios que ya se loguearon con Google y están esperando acceso. Ingresá su email y asignales un rol.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email de Google</label>
+            <input
+              type="email"
+              placeholder="nombre@gmail.com"
+              value={approveEmail}
+              onChange={(e) => setApproveEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleApprove()}
+              autoFocus
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+            <Select
+              value={approveRole}
+              onChange={(val) => setApproveRole(val)}
+              options={assignableRoles.filter((r) => r.value !== 'owner').map((r) => ({ value: r.value, label: r.label }))}
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleApprove}
+              disabled={isApproving || !approveEmail.trim()}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition"
+            >
+              {isApproving ? 'Aprobando...' : 'Aprobar acceso'}
+            </button>
+            <button
+              onClick={() => setShowApproveModal(false)}
+              className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        title="Invitar usuario con Google"
+      >
+        <div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+            <p className="text-sm text-indigo-800">
+              Ingresá el email de Google de la persona. La próxima vez que inicie sesión con esa cuenta, entrará directamente a tu organización con el rol asignado.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email de Google</label>
+            <input
+              type="email"
+              placeholder="nombre@gmail.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+              autoFocus
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+            <Select
+              value={inviteRole}
+              onChange={(val) => setInviteRole(val)}
+              options={assignableRoles.filter((r) => r.value !== 'owner').map((r) => ({ value: r.value, label: r.label }))}
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleInvite}
+              disabled={isInviting || !inviteEmail.trim()}
+              className="flex-1 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-md transition"
+            >
+              {isInviting ? 'Guardando...' : 'Confirmar invitación'}
+            </button>
+            <button
+              onClick={() => setShowInviteModal(false)}
+              className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2 px-4 rounded-md transition"
+            >
               Cancelar
             </button>
           </div>

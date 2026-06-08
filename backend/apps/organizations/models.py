@@ -70,3 +70,9 @@ class License(BaseModel):
     def is_expired(self):
         from django.utils import timezone
         return timezone.now().date() > self.valid_to
+
+    @property
+    def days_remaining(self):
+        from django.utils import timezone
+        delta = self.valid_to - timezone.now().date()
+        return max(delta.days, 0)

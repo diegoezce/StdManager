@@ -25,6 +25,14 @@ class CustomUser(AbstractUser):
         default=None
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
+    requested_organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.SET_NULL,
+        related_name='access_requests',
+        null=True,
+        blank=True,
+        default=None,
+    )
     corporate_client = models.ForeignKey(
         'blast.CorporateClient',
         on_delete=models.SET_NULL,

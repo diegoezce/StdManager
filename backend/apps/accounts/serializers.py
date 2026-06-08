@@ -17,10 +17,12 @@ class UserSerializer(serializers.ModelSerializer):
     organization_name = serializers.SerializerMethodField()
     organization_slug = serializers.SerializerMethodField()
     brand_name = serializers.SerializerMethodField()
+    organization_status = serializers.SerializerMethodField()
+    trial_days_remaining = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'organization_id', 'organization_name', 'organization_slug', 'brand_name', 'is_active', 'created_at', 'corporate_client')
+        fields = ('id', 'email', 'first_name', 'last_name', 'role', 'organization_id', 'organization_name', 'organization_slug', 'brand_name', 'organization_status', 'trial_days_remaining', 'is_active', 'last_login', 'created_at', 'corporate_client')
         read_only_fields = ('id', 'created_at')
 
     def get_organization_name(self, obj):
@@ -31,6 +33,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_brand_name(self, obj):
         return obj.organization.brand_name if obj.organization else ''
+
+    def get_organization_status(self, obj):
+        return obj.organization.status if obj.organization else None
+
+    def get_trial_days_remaining(self, obj):
+        if not obj.organization:
+            return None
+        license = getattr(obj.organization, 'license', None)
+        return license.days_remaining if license else None
 
 
 class UserCreateUpdateSerializer(serializers.ModelSerializer):

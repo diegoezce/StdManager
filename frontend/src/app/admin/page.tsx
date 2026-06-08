@@ -48,7 +48,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 const PLAN_LABELS: Record<string, string> = {
   free:         'Free',
   basic:        'Basic',
-  professional: 'Professional',
+  professional: 'Pro',
   enterprise:   'Enterprise',
 }
 

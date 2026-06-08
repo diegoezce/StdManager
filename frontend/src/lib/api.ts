@@ -48,6 +48,31 @@ class APIClient {
     return response.data
   }
 
+
+  async googleLogin(credential: string) {
+    const response = await this.axiosInstance.post("/auth/google/", { credential })
+    return response.data
+  }
+
+  async selectOrganization(slug: string) {
+    const response = await this.axiosInstance.post('/auth/select-organization/', { slug })
+    return response.data
+  }
+
+  async createMyOrg(name: string) {
+    const response = await this.axiosInstance.post('/organizations/create-my-org/', { name })
+    return response.data
+  }
+
+  async requestOrgAccess(slug: string) {
+    const response = await this.axiosInstance.post('/auth/request-org-access/', { slug })
+    return response.data // { org_name, owner_email }
+  }
+
+  async getPublicOrganizations() {
+    const response = await this.axiosInstance.get('/organizations/public/')
+    return response.data
+  }
   async getMe() {
     const response = await this.axiosInstance.get('/auth/users/me/')
     return response.data
@@ -356,6 +381,16 @@ class APIClient {
     const response = await this.axiosInstance.post(`/organizations/${slug}/transfer-ownership/`, {
       new_owner_id: newOwnerId,
     })
+    return response.data
+  }
+
+  async approveUser(orgSlug: string, email: string, role: string) {
+    const response = await this.axiosInstance.post(`/organizations/${orgSlug}/approve-user/`, { email, role })
+    return response.data
+  }
+
+  async getPendingUsers(orgSlug: string) {
+    const response = await this.axiosInstance.get(`/organizations/${orgSlug}/pending-users/`)
     return response.data
   }
 }

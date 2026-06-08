@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { BlastLogo } from '@/components/BlastLogo'
+import { TrialBanner } from '@/components/TrialBanner'
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -61,6 +62,7 @@ export function Navbar() {
   }
 
   return (
+    <>
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
@@ -134,5 +136,7 @@ export function Navbar() {
         )}
       </div>
     </nav>
+    <TrialBanner />
+    </>
   )
 }
