@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
-const BAKED_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+// Public identifier — safe to hardcode (appears in every OAuth redirect URL)
+const BAKED_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  '763927865077-lume08028hejh6ft4q5hg9i5jtkhmvfm.apps.googleusercontent.com'
 
 export function GoogleProvider({
   clientId: serverClientId,
