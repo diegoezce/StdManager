@@ -27,6 +27,13 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     checkAuth()
   }, [user, me, router])
 
+  // If user has no organization, redirect to org selection
+  useEffect(() => {
+    if (user && !user.organization_id && allowedRoles.some(r => r !== 'super_admin')) {
+      router.push('/seleccionar-organizacion')
+    }
+  }, [user, router, allowedRoles])
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">

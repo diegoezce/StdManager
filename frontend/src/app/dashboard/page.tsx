@@ -31,6 +31,13 @@ export default function DashboardPage() {
     checkAuth()
   }, [user, me, router])
 
+  // Redirect users without an organization to the selection screen
+  useEffect(() => {
+    if (user && !user.organization_id) {
+      router.push('/seleccionar-organizacion')
+    }
+  }, [user, router])
+
   useEffect(() => {
     const loadDashboard = async () => {
       try {

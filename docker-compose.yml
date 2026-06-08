@@ -28,6 +28,7 @@ services:
       DB_PORT: "5432"
       SECRET_KEY: django-insecure-dev-key-change-in-production
       ALLOWED_HOSTS: localhost,127.0.0.1,backend
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-763927865077-lume08028hejh6ft4q5hg9i5jtkhmvfm.apps.googleusercontent.com}
     ports:
       - "8000:8000"
     depends_on:
@@ -51,3 +52,4 @@ services:
 
 volumes:
   postgres_data:
+
