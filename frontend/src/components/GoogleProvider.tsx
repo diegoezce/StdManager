@@ -25,10 +25,8 @@ export function GoogleProvider({
     }
   }, [clientId])
 
-  if (!clientId) return <>{children}</>
-
   return (
-    <GoogleOAuthProvider clientId={clientId}>
+    <GoogleOAuthProvider clientId={clientId} key={clientId}>
       {children}
     </GoogleOAuthProvider>
   )

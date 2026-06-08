@@ -1,11 +1,15 @@
 'use client'
 
-
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { BlastLogo } from '@/components/BlastLogo'
-import { GoogleLogin } from '@react-oauth/google'
+
+const GoogleLogin = dynamic(
+  () => import('@react-oauth/google').then((mod) => mod.GoogleLogin),
+  { ssr: false }
+)
 
 export default function LoginPage() {
   const router = useRouter()
