@@ -3,7 +3,7 @@ import './globals.css'
 import { GoogleProvider } from '@/components/GoogleProvider'
 import Script from 'next/script'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blest.app'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.blestlearning.com'
 const siteName = 'BLEST'
 const siteDescription =
   'BLEST es la plataforma integral para la gestión de institutos de idiomas: administra estudiantes, profesores, grupos, asistencias, evaluaciones y reportes en un solo lugar.'

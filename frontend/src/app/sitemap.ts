@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://blest.app'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.blestlearning.com'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
