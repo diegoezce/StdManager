@@ -29,14 +29,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy built application
+# Copy standalone build output (minimal server + traced deps, no full node_modules)
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Install only production dependencies
-RUN npm ci --only=production
+# Bind to all interfaces so Railway can reach the standalone server
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
 # Expose port
 EXPOSE 3000
@@ -45,5 +45,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Start Next.js
-CMD ["npm", "start"]
+# Start Next.js standalone server
+CMD ["node", "server.js"]
