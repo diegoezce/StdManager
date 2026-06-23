@@ -18,6 +18,7 @@ interface CorporateClient {
   contact_phone: string
   address: string
   is_active: boolean
+  send_monthly_report: boolean
   created_at: string
 }
 
@@ -28,6 +29,7 @@ const EMPTY_FORM = {
   contact_phone: '',
   address: '',
   is_active: true,
+  send_monthly_report: false,
 }
 
 export default function EmpresasPage() {
@@ -76,6 +78,7 @@ export default function EmpresasPage() {
       contact_phone: c.contact_phone || '',
       address: c.address || '',
       is_active: c.is_active,
+      send_monthly_report: c.send_monthly_report,
     })
     setEditingId(c.id)
     setShowForm(true)
@@ -222,6 +225,18 @@ export default function EmpresasPage() {
                     </label>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="send_monthly_report"
+                    checked={formData.send_monthly_report}
+                    onChange={(e) => setFormData({ ...formData, send_monthly_report: e.target.checked })}
+                    className="rounded"
+                  />
+                  <label htmlFor="send_monthly_report" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    Enviar reporte mensual automático
+                  </label>
+                </div>
               </div>
               <div className="flex gap-2 pt-2">
                 <button
@@ -271,6 +286,9 @@ export default function EmpresasPage() {
                       )}
                       {c.address && (
                         <p><span className="font-medium">Address:</span> {c.address}</p>
+                      )}
+                      {c.send_monthly_report && (
+                        <p className="text-indigo-600 text-xs font-medium mt-1">✓ Reporte mensual activo</p>
                       )}
                     </div>
                   </div>

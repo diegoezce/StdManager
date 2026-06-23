@@ -12,6 +12,7 @@ class CorporateClient(OrganizationMixin, BaseModel):
     contact_phone = models.CharField(max_length=20, blank=True)
     address = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    send_monthly_report = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('organization', 'company_name')

@@ -5,7 +5,7 @@ from .views import (
     GroupViewSet, EnrollmentViewSet, AttendanceViewSet,
     EvaluationViewSet, CertificateViewSet, EmptyClassSessionViewSet,
     attendance_report, students_report, groups_report, teachers_report,
-    mondly_import, mondly_data,
+    mondly_import, mondly_data, public_report,
 )
 
 router = DefaultRouter()
@@ -27,4 +27,5 @@ urlpatterns = [
     path('reports/teachers/', teachers_report, name='teachers-report'),
     path('mondly/import/', mondly_import, name='mondly-import'),
     path('mondly/data/', mondly_data, name='mondly-data'),
+    path('reports/public/<str:token>/', public_report, name='public-report'),
 ]

@@ -702,6 +702,112 @@ def teachers_report(request):
     return Response(result)
 
 
+def public_report(request, token):
+    """Render a monthly report as HTML using a signed token (no login required)."""
+    from django.core import signing
+    from django.http import HttpResponse, HttpResponseBadRequest
+    from django.template.loader import render_to_string
+    from collections import defaultdict
+
+    try:
+        data = signing.loads(token, max_age=60 * 60 * 24 * 30)  # 30 days
+    except signing.SignatureExpired:
+        return HttpResponseBadRequest('Este enlace ha expirado.')
+    except signing.BadSignature:
+        return HttpResponseBadRequest('Enlace inválido.')
+
+    try:
+        client = CorporateClient.objects.get(id=data['client_id'])
+    except CorporateClient.DoesNotExist:
+        return HttpResponseBadRequest('Empresa no encontrada.')
+
+    month = data['month']
+    year = data['year']
+
+    MONTH_NAMES_ES = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+    }
+    LEVEL_LABELS = {
+        'beginner': 'Beginner', 'elementary': 'Elementary',
+        'pre-intermediate': 'Pre-Intermediate', 'intermediate': 'Intermediate',
+        'upper-intermediate': 'Upper-Intermediate', 'advanced': 'Advanced',
+    }
+
+    attendances = Attendance.objects.filter(
+        organization=client.organization,
+        student__corporate_client=client,
+        student__is_active=True,
+        date__year=year,
+        date__month=month,
+    ).select_related('student__user', 'group')
+
+    student_rows = defaultdict(lambda: {'name': '', 'present': 0, 'absent': 0, 'late': 0, 'excused': 0})
+    group_dates = defaultdict(set)
+    group_meta = {}
+
+    for record in attendances:
+        sid = record.student_id
+        student_rows[sid]['name'] = record.student.user.get_full_name() or record.student.user.email
+        student_rows[sid][record.status] += 1
+        gid = record.group_id
+        group_dates[gid].add(record.date)
+        if gid not in group_meta:
+            group_meta[gid] = {
+                'name': record.group.name,
+                'level': LEVEL_LABELS.get(record.group.level, record.group.level),
+            }
+
+    students = []
+    for sid, row in student_rows.items():
+        total = row['present'] + row['absent'] + row['late'] + row['excused']
+        attended = row['present'] + row['late']
+        students.append({
+            '_id': sid,
+            'name': row['name'],
+            'present': row['present'], 'absent': row['absent'],
+            'late': row['late'], 'excused': row['excused'],
+            'total': total,
+            'rate': round(attended / total * 100, 1) if total > 0 else None,
+        })
+    students.sort(key=lambda s: s['name'])
+
+    groups = sorted([
+        {'name': m['name'], 'level': m['level'], 'classes_held': len(group_dates[gid])}
+        for gid, m in group_meta.items()
+    ], key=lambda g: g['name'])
+
+    mondly_qs = (
+        MondlyRecord.objects
+        .filter(organization=client.organization, student__corporate_client=client, student__isnull=False)
+        .order_by('student_id', '-imported_at')
+        .distinct('student_id')
+        .values('student_id', 'level', 'points', 'best_streak', 'learning_minutes', 'lessons_completed', 'words_learned')
+    )
+    mondly_by_student = {r['student_id']: r for r in mondly_qs}
+    mondly_students = []
+    for s in students:
+        m = mondly_by_student.get(s['_id'])
+        if m:
+            mondly_students.append({
+                'name': s['name'], 'level': m['level'], 'points': m['points'],
+                'best_streak': m['best_streak'], 'learning_minutes': m['learning_minutes'],
+                'lessons_completed': m['lessons_completed'], 'words_learned': m['words_learned'],
+            })
+
+    html = render_to_string('emails/monthly_report.html', {
+        'company_name': client.company_name,
+        'month_name': MONTH_NAMES_ES[month],
+        'year': year,
+        'students': students,
+        'groups': groups,
+        'mondly_students': mondly_students,
+        'is_web_view': True,
+    })
+    return HttpResponse(html)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def mondly_import(request):
