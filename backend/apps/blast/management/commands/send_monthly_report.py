@@ -198,10 +198,11 @@ class Command(BaseCommand):
             self.stdout.write(f'{"="*60}\n')
             return True
 
+        import email.utils
         api_key = settings.MAILJET_API_KEY
         api_secret = settings.MAILJET_API_SECRET
-        from_email = settings.EMAIL_HOST_USER
-        from_name = 'BLEST'
+        from_name, from_email = email.utils.parseaddr(settings.DEFAULT_FROM_EMAIL)
+        from_name = from_name or 'BLEST'
 
         response = requests.post(
             'https://api.mailjet.com/v3.1/send',
