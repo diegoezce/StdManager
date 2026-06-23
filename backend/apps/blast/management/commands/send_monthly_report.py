@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand
 from django.template.loader import render_to_string
 
 from apps.blast.models import Attendance, CorporateClient, MondlyRecord
+from apps.blast.report_charts import attendance_bar_chart, attendance_donut_chart
 from apps.organizations.models import Organization
 
 
@@ -168,6 +169,8 @@ class Command(BaseCommand):
                     'points': m['points'],
                 })
 
+        chart_bar = attendance_bar_chart(students)
+        chart_donut = attendance_donut_chart(students)
         token = signing.dumps({'client_id': str(client.id), 'month': month, 'year': year})
         base_url = getattr(settings, 'PUBLIC_BASE_URL', '').rstrip('/')
         online_url = f'{base_url}/api/v1/reports/public/{token}/' if base_url else None
@@ -180,6 +183,8 @@ class Command(BaseCommand):
             'groups': groups,
             'mondly_students': mondly_students,
             'online_url': online_url,
+            'chart_bar': chart_bar,
+            'chart_donut': chart_donut,
         }
 
         subject = f'Reporte Mensual BLEST — {client.company_name} — {month_name} {year}'

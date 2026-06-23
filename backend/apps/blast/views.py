@@ -796,6 +796,7 @@ def public_report(request, token):
                 'lessons_completed': m['lessons_completed'], 'words_learned': m['words_learned'],
             })
 
+    from .report_charts import attendance_bar_chart, attendance_donut_chart
     html = render_to_string('emails/monthly_report.html', {
         'company_name': client.company_name,
         'month_name': MONTH_NAMES_ES[month],
@@ -804,6 +805,8 @@ def public_report(request, token):
         'groups': groups,
         'mondly_students': mondly_students,
         'is_web_view': True,
+        'chart_bar': attendance_bar_chart(students),
+        'chart_donut': attendance_donut_chart(students),
     })
     return HttpResponse(html)
 

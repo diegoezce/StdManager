@@ -91,6 +91,31 @@
           </td>
         </tr>
 
+        <!-- Charts section -->
+        {% if chart_bar or chart_donut %}
+        <tr>
+          <td style="padding:24px 36px 8px;">
+            <p style="margin:0 0 16px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#888;">Participación en Clase</p>
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                {% if chart_donut %}
+                <td width="220" valign="top" style="padding-right:24px;">
+                  <p style="margin:0 0 10px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;">Distribución total</p>
+                  {{ chart_donut|safe }}
+                </td>
+                {% endif %}
+                {% if chart_bar %}
+                <td valign="top">
+                  <p style="margin:0 0 10px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;">Tasa por alumno</p>
+                  {{ chart_bar|safe }}
+                </td>
+                {% endif %}
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {% endif %}
+
         <!-- Groups section -->
         {% if groups %}
         <tr>
