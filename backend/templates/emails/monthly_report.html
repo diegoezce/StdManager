@@ -91,8 +91,8 @@
           </td>
         </tr>
 
-        <!-- Charts section -->
-        {% if chart_bar or chart_donut %}
+        <!-- Charts section (online view only) -->
+        {% if is_web_view and chart_bar or is_web_view and chart_donut %}
         <tr>
           <td style="padding:24px 36px 8px;">
             <p style="margin:0 0 16px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#888;">Participación en Clase</p>
