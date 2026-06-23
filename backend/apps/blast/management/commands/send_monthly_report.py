@@ -216,7 +216,9 @@ class Command(BaseCommand):
             },
             timeout=30,
         )
-        response.raise_for_status()
+        if not response.ok:
+            self.stderr.write(f'  Mailjet error {response.status_code}: {response.text}')
+            response.raise_for_status()
 
         self.stdout.write(f'  SENT → {client.contact_email} ({client.company_name})')
         return True
