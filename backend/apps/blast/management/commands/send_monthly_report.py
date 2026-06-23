@@ -1,9 +1,9 @@
 from collections import defaultdict
 from datetime import date
 
+import requests
 from django.conf import settings
 from django.core import signing
-from django.core.mail import EmailMultiAlternatives
 from django.core.management.base import BaseCommand
 from django.template.loader import render_to_string
 
@@ -198,10 +198,25 @@ class Command(BaseCommand):
             self.stdout.write(f'{"="*60}\n')
             return True
 
-        from_email = settings.DEFAULT_FROM_EMAIL
-        msg = EmailMultiAlternatives(subject, '', from_email, [client.contact_email])
-        msg.attach_alternative(html_body, 'text/html')
-        msg.send()
+        api_key = settings.MAILJET_API_KEY
+        api_secret = settings.MAILJET_API_SECRET
+        from_email = settings.EMAIL_HOST_USER
+        from_name = 'BLEST'
+
+        response = requests.post(
+            'https://api.mailjet.com/v3.1/send',
+            auth=(api_key, api_secret),
+            json={
+                'Messages': [{
+                    'From': {'Email': from_email, 'Name': from_name},
+                    'To': [{'Email': client.contact_email}],
+                    'Subject': subject,
+                    'HTMLPart': html_body,
+                }]
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
 
         self.stdout.write(f'  SENT → {client.contact_email} ({client.company_name})')
         return True
