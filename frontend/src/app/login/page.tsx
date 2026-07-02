@@ -75,6 +75,30 @@ export default function LoginPage() {
               <Pillar number="02" label="Grupos" />
               <Pillar number="03" label="Reportes" />
             </div>
+
+            <a
+              href="https://aienglish.blestlearning.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3.5 hover:bg-indigo-100 transition group"
+            >
+              <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                AI
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-indigo-900 group-hover:text-indigo-700 transition">
+                    AI + English
+                  </span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider bg-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded-full">
+                    Beta
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-600 mt-0.5">
+                  Nueva plataforma de BLEST para aprender inglés con IA →
+                </p>
+              </div>
+            </a>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 sm:p-10">
@@ -197,6 +221,19 @@ export default function LoginPage() {
               >
                 ¿Necesitás ayuda para ingresar?
               </button>
+            </div>
+
+            <div className="md:hidden mt-5 pt-5 border-t border-slate-100 text-center">
+              <a
+                href="https://aienglish.blestlearning.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 transition"
+              >
+                <span className="bg-indigo-600 text-white text-[9px] font-bold px-1 py-0.5 rounded">AI</span>
+                Conocé AI + English, la nueva app de BLEST
+                <span className="bg-indigo-100 text-indigo-600 text-[9px] font-medium px-1 py-0.5 rounded-full uppercase">Beta</span>
+              </a>
             </div>
           </div>
         </div>
