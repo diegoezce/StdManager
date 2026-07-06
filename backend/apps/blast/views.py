@@ -729,26 +729,26 @@ def public_report(request, token):
     }
 
     from datetime import date as date_cls
-    if 'date_from' in data and 'date_to' in data:
+    MONTH_NAMES_ES = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+    }
+    if 'month' in data:
+        # Monthly report token (has explicit month key)
+        month = data['month']
+        date_from = date_cls.fromisoformat(data['date_from']) if 'date_from' in data else date_cls(year, month, 1)
+        date_to = date_cls.fromisoformat(data['date_to']) if 'date_to' in data else date_from.replace(day=28)
+        period_label = f'{MONTH_NAMES_ES[month]} {year}'
+        attendance_filter = {'date__gte': date_from, 'date__lte': date_to}
+    elif 'date_from' in data and 'date_to' in data:
+        # YTD token
         date_from = date_cls.fromisoformat(data['date_from'])
         date_to = date_cls.fromisoformat(data['date_to'])
-        MONTH_NAMES_ES = {
-            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
-        }
         period_label = f'Enero–{MONTH_NAMES_ES[date_to.month]} {year}'
         attendance_filter = {'date__gte': date_from, 'date__lte': date_to}
     else:
-        # Legacy tokens that still carry 'month'
-        month = data['month']
-        MONTH_NAMES_ES = {
-            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
-        }
-        period_label = f'{MONTH_NAMES_ES[month]} {year}'
-        attendance_filter = {'date__year': year, 'date__month': month}
+        return HttpResponseBadRequest('Token de reporte inválido.')
 
     attendances = Attendance.objects.filter(
         organization=client.organization,
