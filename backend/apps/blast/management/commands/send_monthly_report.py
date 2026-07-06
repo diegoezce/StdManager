@@ -29,9 +29,10 @@ LEVEL_LABELS = {
 
 
 class Command(BaseCommand):
-    help = 'Send monthly attendance reports to all corporate client HR contacts.'
+    help = 'Send attendance reports to all corporate client HR contacts.'
 
     def add_arguments(self, parser):
+        parser.add_argument('--month', type=int, help='Month (1-12) for monthly-type clients. Defaults to last month.')
         parser.add_argument('--year', type=int, help='Year (e.g. 2026). Defaults to current year.')
         parser.add_argument('--dry-run', action='store_true', help='Print emails to stdout instead of sending.')
         parser.add_argument('--client-id', type=str, help='Only send for this CorporateClient UUID.')
@@ -39,14 +40,21 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         today = date.today()
         year = options['year'] or today.year
-        date_from = date(year, 1, 1)
-        date_to = date(year, today.month, today.day) if year == today.year else date(year, 12, 31)
+
+        # Resolve month for monthly-type clients
+        if options['month']:
+            month = options['month']
+        else:
+            if today.month == 1:
+                month = 12
+                year = year - 1 if not options['year'] else year
+            else:
+                month = today.month - 1
 
         dry_run = options['dry_run']
         target_client_id = options.get('client_id')
 
-        period_label = f'Enero–{MONTH_NAMES_ES[date_to.month]} {year}'
-        self.stdout.write(f'Sending YTD reports for {period_label} (dry_run={dry_run})')
+        self.stdout.write(f'Sending reports for year={year} month={month} (dry_run={dry_run})')
 
         sent = 0
         skipped = 0
@@ -61,7 +69,31 @@ class Command(BaseCommand):
                 clients_qs = clients_qs.filter(id=target_client_id)
 
             for client in clients_qs:
-                result = self._send_report(org, client, year, date_from, date_to, period_label, dry_run)
+                if client.report_type == 'ytd':
+                    date_from = date(year, 1, 1)
+                    date_to = date(year, today.month, today.day) if year == today.year else date(year, 12, 31)
+                    period_label = f'Enero–{MONTH_NAMES_ES[date_to.month]} {year}'
+                    token_data = {
+                        'client_id': str(client.id),
+                        'year': year,
+                        'date_from': date_from.isoformat(),
+                        'date_to': date_to.isoformat(),
+                    }
+                else:
+                    date_from = date(year, month, 1)
+                    import calendar
+                    last_day = calendar.monthrange(year, month)[1]
+                    date_to = date(year, month, last_day)
+                    period_label = f'{MONTH_NAMES_ES[month]} {year}'
+                    token_data = {
+                        'client_id': str(client.id),
+                        'year': year,
+                        'month': month,
+                        'date_from': date_from.isoformat(),
+                        'date_to': date_to.isoformat(),
+                    }
+
+                result = self._send_report(org, client, year, date_from, date_to, period_label, token_data, dry_run)
                 if result:
                     sent += 1
                 else:
@@ -69,8 +101,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Done. Sent: {sent}  Skipped: {skipped}'))
 
-    def _send_report(self, org, client, year, date_from, date_to, period_label, dry_run):
-        # All attendance records for this client's students in the YTD range
+    def _send_report(self, org, client, year, date_from, date_to, period_label, token_data, dry_run):
         attendances = Attendance.objects.filter(
             organization=org,
             student__corporate_client=client,
@@ -83,11 +114,10 @@ class Command(BaseCommand):
             self.stdout.write(f'  SKIP {client.company_name} — no attendance data')
             return False
 
-        # Aggregate per student
         student_rows = defaultdict(lambda: {
             'name': '', 'present': 0, 'absent': 0, 'late': 0, 'excused': 0,
         })
-        group_dates = defaultdict(set)  # group_id → set of dates with records
+        group_dates = defaultdict(set)
         group_meta = {}
 
         for record in attendances:
@@ -96,7 +126,6 @@ class Command(BaseCommand):
                 record.student.user.get_full_name() or record.student.user.email
             )
             student_rows[sid][record.status] += 1
-
             gid = record.group_id
             group_dates[gid].add(record.date)
             if gid not in group_meta:
@@ -131,7 +160,6 @@ class Command(BaseCommand):
             })
         groups.sort(key=lambda g: g['name'])
 
-        # Latest Mondly snapshot per student (most recent import)
         mondly_qs = (
             MondlyRecord.objects
             .filter(organization=org, student__corporate_client=client, student__isnull=False)
@@ -145,7 +173,6 @@ class Command(BaseCommand):
         )
         mondly_by_student = {r['student_id']: r for r in mondly_qs}
 
-        # Build mondly rows for students that have data, preserving name order
         mondly_students = []
         for s in students:
             m = mondly_by_student.get(s['_id'])
@@ -162,7 +189,7 @@ class Command(BaseCommand):
 
         chart_bar = attendance_bar_chart(students)
         chart_donut = attendance_donut_chart(students)
-        token = signing.dumps({'client_id': str(client.id), 'year': year, 'date_from': date_from.isoformat(), 'date_to': date_to.isoformat()})
+        token = signing.dumps(token_data)
         base_url = getattr(settings, 'PUBLIC_BASE_URL', '').rstrip('/')
         online_url = f'{base_url}/api/v1/reports/public/{token}/' if base_url else None
 
@@ -185,7 +212,7 @@ class Command(BaseCommand):
             self.stdout.write(f'\n{"="*60}')
             self.stdout.write(f'TO: {client.contact_email}')
             self.stdout.write(f'SUBJECT: {subject}')
-            self.stdout.write(f'Period: {date_from} → {date_to}')
+            self.stdout.write(f'Type: {client.report_type}  Period: {date_from} → {date_to}')
             self.stdout.write(f'Students: {len(students)}  Groups: {len(groups)}')
             for s in students:
                 self.stdout.write(

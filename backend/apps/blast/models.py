@@ -13,6 +13,8 @@ class CorporateClient(OrganizationMixin, BaseModel):
     address = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     send_monthly_report = models.BooleanField(default=False)
+    REPORT_TYPE_CHOICES = [('ytd', 'Year to Date'), ('monthly', 'Mensual')]
+    report_type = models.CharField(max_length=10, choices=REPORT_TYPE_CHOICES, default='ytd')
 
     class Meta:
         unique_together = ('organization', 'company_name')

@@ -16,6 +16,7 @@ interface CorporateClient {
   contact_email: string
   is_active: boolean
   send_monthly_report: boolean
+  report_type: 'ytd' | 'monthly'
 }
 
 export default function ReportConfigPage() {
@@ -24,7 +25,7 @@ export default function ReportConfigPage() {
   const toast = useToast()
   const [clients, setClients] = useState<CorporateClient[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [toggling, setToggling] = useState<string | null>(null)
+  const [saving, setSaving] = useState<string | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -44,23 +45,24 @@ export default function ReportConfigPage() {
       .finally(() => setIsLoading(false))
   }, [user])
 
-  const handleToggle = async (client: CorporateClient) => {
-    setToggling(client.id)
+  const patch = async (client: CorporateClient, data: Partial<CorporateClient>) => {
+    setSaving(client.id)
     try {
-      const updated = await apiClient.patchCorporateClient(client.id, {
-        send_monthly_report: !client.send_monthly_report,
-      })
+      const updated = await apiClient.patchCorporateClient(client.id, data)
       setClients((prev) => prev.map((c) => (c.id === client.id ? { ...c, ...updated } : c)))
-      toast.success(
-        updated.send_monthly_report
-          ? `Reporte activado para ${client.company_name}`
-          : `Reporte desactivado para ${client.company_name}`
-      )
     } catch (error: any) {
       toast.error(extractErrorMessage(error))
     } finally {
-      setToggling(null)
+      setSaving(null)
     }
+  }
+
+  const handleToggle = (client: CorporateClient) => {
+    patch(client, { send_monthly_report: !client.send_monthly_report })
+  }
+
+  const handleTypeChange = (client: CorporateClient, type: 'ytd' | 'monthly') => {
+    patch(client, { report_type: type })
   }
 
   const activeCount = clients.filter((c) => c.send_monthly_report).length
@@ -81,8 +83,8 @@ export default function ReportConfigPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <PageHeader
             eyebrow="Configuración"
-            title="Reporte YTD"
-            subtitle="Activa o desactiva el reporte anual acumulado (Year to Date) por empresa. El reporte se envía automáticamente al email de contacto."
+            title="Reportes automáticos"
+            subtitle="Configura el tipo y envío automático de reportes por empresa. El reporte se envía al email de contacto."
             actions={
               <button
                 onClick={() => router.push('/configuracion')}
@@ -93,7 +95,6 @@ export default function ReportConfigPage() {
             }
           />
 
-          {/* Summary pill */}
           <div className="mb-6 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-700">
               <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
@@ -119,8 +120,8 @@ export default function ReportConfigPage() {
                   <tr className="border-b border-gray-100 bg-slate-50">
                     <th className="text-left px-5 py-3 font-semibold text-gray-600">Empresa</th>
                     <th className="text-left px-5 py-3 font-semibold text-gray-600">Email de reporte</th>
-                    <th className="text-left px-5 py-3 font-semibold text-gray-600">Estado</th>
-                    <th className="text-right px-5 py-3 font-semibold text-gray-600">Enviar reporte</th>
+                    <th className="text-left px-5 py-3 font-semibold text-gray-600">Tipo</th>
+                    <th className="text-right px-5 py-3 font-semibold text-gray-600">Activo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -132,20 +133,35 @@ export default function ReportConfigPage() {
                       </td>
                       <td className="px-5 py-4 text-gray-600">{c.contact_email}</td>
                       <td className="px-5 py-4">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            c.is_active
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
-                          }`}
-                        >
-                          {c.is_active ? 'Activa' : 'Inactiva'}
-                        </span>
+                        <div className="inline-flex rounded-md border border-gray-200 overflow-hidden text-xs font-medium">
+                          <button
+                            onClick={() => handleTypeChange(c, 'ytd')}
+                            disabled={saving === c.id || !c.is_active}
+                            className={`px-3 py-1.5 transition-colors disabled:cursor-not-allowed ${
+                              c.report_type === 'ytd'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            YTD
+                          </button>
+                          <button
+                            onClick={() => handleTypeChange(c, 'monthly')}
+                            disabled={saving === c.id || !c.is_active}
+                            className={`px-3 py-1.5 border-l border-gray-200 transition-colors disabled:cursor-not-allowed ${
+                              c.report_type === 'monthly'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            Mensual
+                          </button>
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <button
                           onClick={() => handleToggle(c)}
-                          disabled={toggling === c.id || !c.is_active}
+                          disabled={saving === c.id || !c.is_active}
                           aria-label={c.send_monthly_report ? 'Desactivar reporte' : 'Activar reporte'}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed ${
                             c.send_monthly_report ? 'bg-indigo-600' : 'bg-gray-200'
@@ -166,11 +182,11 @@ export default function ReportConfigPage() {
           )}
 
           <p className="mt-4 text-xs text-gray-400">
-            Las empresas inactivas no pueden recibir reportes. Actívalas desde{' '}
+            <strong>YTD</strong>: acumula desde enero hasta el mes actual. <strong>Mensual</strong>: solo el mes anterior.
+            Las empresas inactivas no pueden recibir reportes — actívalas desde{' '}
             <button onClick={() => router.push('/empresas')} className="text-indigo-500 underline">
               Empresas
-            </button>
-            .
+            </button>.
           </p>
         </div>
       </div>

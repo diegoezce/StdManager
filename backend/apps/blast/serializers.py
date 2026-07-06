@@ -8,7 +8,7 @@ from .models import (
 class CorporateClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = CorporateClient
-        fields = ('id', 'company_name', 'contact_name', 'contact_email', 'contact_phone', 'address', 'is_active', 'send_monthly_report', 'created_at')
+        fields = ('id', 'company_name', 'contact_name', 'contact_email', 'contact_phone', 'address', 'is_active', 'send_monthly_report', 'report_type', 'created_at')
         read_only_fields = ('id', 'created_at')
 
 
