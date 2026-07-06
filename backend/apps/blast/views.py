@@ -721,26 +721,40 @@ def public_report(request, token):
     except CorporateClient.DoesNotExist:
         return HttpResponseBadRequest('Empresa no encontrada.')
 
-    month = data['month']
     year = data['year']
-
-    MONTH_NAMES_ES = {
-        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
-    }
     LEVEL_LABELS = {
         'beginner': 'Beginner', 'elementary': 'Elementary',
         'pre-intermediate': 'Pre-Intermediate', 'intermediate': 'Intermediate',
         'upper-intermediate': 'Upper-Intermediate', 'advanced': 'Advanced',
     }
 
+    from datetime import date as date_cls
+    if 'date_from' in data and 'date_to' in data:
+        date_from = date_cls.fromisoformat(data['date_from'])
+        date_to = date_cls.fromisoformat(data['date_to'])
+        MONTH_NAMES_ES = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+        }
+        period_label = f'Enero–{MONTH_NAMES_ES[date_to.month]} {year}'
+        attendance_filter = {'date__gte': date_from, 'date__lte': date_to}
+    else:
+        # Legacy tokens that still carry 'month'
+        month = data['month']
+        MONTH_NAMES_ES = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+        }
+        period_label = f'{MONTH_NAMES_ES[month]} {year}'
+        attendance_filter = {'date__year': year, 'date__month': month}
+
     attendances = Attendance.objects.filter(
         organization=client.organization,
         student__corporate_client=client,
         student__is_active=True,
-        date__year=year,
-        date__month=month,
+        **attendance_filter,
     ).select_related('student__user', 'group')
 
     student_rows = defaultdict(lambda: {'name': '', 'present': 0, 'absent': 0, 'late': 0, 'excused': 0})
@@ -799,7 +813,7 @@ def public_report(request, token):
     from .report_charts import attendance_bar_chart, attendance_donut_chart
     html = render_to_string('emails/monthly_report.html', {
         'company_name': client.company_name,
-        'month_name': MONTH_NAMES_ES[month],
+        'period_label': period_label,
         'year': year,
         'students': students,
         'groups': groups,
