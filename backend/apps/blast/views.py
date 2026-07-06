@@ -734,12 +734,23 @@ def public_report(request, token):
         5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
         9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
     }
+    QUARTER_LABELS = {
+        'q1': 'Q1 (Ene–Mar)', 'q2': 'Q2 (Abr–Jun)',
+        'q3': 'Q3 (Jul–Sep)', 'q4': 'Q4 (Oct–Dic)',
+    }
     if 'month' in data:
-        # Monthly report token (has explicit month key)
+        # Monthly report token
         month = data['month']
         date_from = date_cls.fromisoformat(data['date_from']) if 'date_from' in data else date_cls(year, month, 1)
         date_to = date_cls.fromisoformat(data['date_to']) if 'date_to' in data else date_from.replace(day=28)
         period_label = f'{MONTH_NAMES_ES[month]} {year}'
+        attendance_filter = {'date__gte': date_from, 'date__lte': date_to}
+    elif 'quarter' in data:
+        # Quarterly report token
+        quarter = data['quarter']
+        date_from = date_cls.fromisoformat(data['date_from'])
+        date_to = date_cls.fromisoformat(data['date_to'])
+        period_label = f'{QUARTER_LABELS.get(quarter, quarter.upper())} {year}'
         attendance_filter = {'date__gte': date_from, 'date__lte': date_to}
     elif 'date_from' in data and 'date_to' in data:
         # YTD token

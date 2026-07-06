@@ -18,6 +18,23 @@ MONTH_NAMES_ES = {
     9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
 }
 
+QUARTER_RANGES = {
+    'q1': (1, 3),
+    'q2': (4, 6),
+    'q3': (7, 9),
+    'q4': (10, 12),
+}
+
+QUARTER_LABELS = {
+    'q1': 'Q1 (Ene–Mar)',
+    'q2': 'Q2 (Abr–Jun)',
+    'q3': 'Q3 (Jul–Sep)',
+    'q4': 'Q4 (Oct–Dic)',
+}
+
+# Month that triggers each quarter report (first month of next quarter)
+QUARTER_TRIGGER_MONTH = {'q1': 4, 'q2': 7, 'q3': 10, 'q4': 1}
+
 LEVEL_LABELS = {
     'beginner': 'Beginner',
     'elementary': 'Elementary',
@@ -34,10 +51,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--month', type=int, help='Month (1-12) for monthly-type clients. Defaults to last month.')
         parser.add_argument('--year', type=int, help='Year (e.g. 2026). Defaults to current year.')
+        parser.add_argument('--quarter', type=str, choices=['q1', 'q2', 'q3', 'q4'], help='Force a specific quarter for quarterly clients.')
         parser.add_argument('--dry-run', action='store_true', help='Print emails to stdout instead of sending.')
         parser.add_argument('--client-id', type=str, help='Only send for this CorporateClient UUID.')
 
     def handle(self, *args, **options):
+        import calendar
         today = date.today()
         year = options['year'] or today.year
 
@@ -50,6 +69,15 @@ class Command(BaseCommand):
                 year = year - 1 if not options['year'] else year
             else:
                 month = today.month - 1
+
+        # Resolve which quarter we're currently triggering (based on current month)
+        # Q1 triggers in April, Q2 in July, Q3 in October, Q4 in January
+        current_trigger_quarter = None
+        for q, trigger_month in QUARTER_TRIGGER_MONTH.items():
+            if today.month == trigger_month:
+                current_trigger_quarter = q
+                break
+        forced_quarter = options.get('quarter')
 
         dry_run = options['dry_run']
         target_client_id = options.get('client_id')
@@ -79,9 +107,8 @@ class Command(BaseCommand):
                         'date_from': date_from.isoformat(),
                         'date_to': date_to.isoformat(),
                     }
-                else:
+                elif client.report_type == 'monthly':
                     date_from = date(year, month, 1)
-                    import calendar
                     last_day = calendar.monthrange(year, month)[1]
                     date_to = date(year, month, last_day)
                     period_label = f'{MONTH_NAMES_ES[month]} {year}'
@@ -89,6 +116,32 @@ class Command(BaseCommand):
                         'client_id': str(client.id),
                         'year': year,
                         'month': month,
+                        'date_from': date_from.isoformat(),
+                        'date_to': date_to.isoformat(),
+                    }
+                else:
+                    # Quarterly report (q1/q2/q3/q4)
+                    quarter = forced_quarter or current_trigger_quarter
+                    if quarter != client.report_type and not forced_quarter:
+                        # Not the right month to send this quarter's report
+                        skipped += 1
+                        continue
+                    if not quarter:
+                        skipped += 1
+                        continue
+                    q_year = year
+                    # Q4 triggers in January of the next year — report is for previous year
+                    if client.report_type == 'q4' and today.month == 1 and not options['year']:
+                        q_year = year - 1
+                    month_start, month_end = QUARTER_RANGES[client.report_type]
+                    date_from = date(q_year, month_start, 1)
+                    last_day = calendar.monthrange(q_year, month_end)[1]
+                    date_to = date(q_year, month_end, last_day)
+                    period_label = f'{QUARTER_LABELS[client.report_type]} {q_year}'
+                    token_data = {
+                        'client_id': str(client.id),
+                        'year': q_year,
+                        'quarter': client.report_type,
                         'date_from': date_from.isoformat(),
                         'date_to': date_to.isoformat(),
                     }

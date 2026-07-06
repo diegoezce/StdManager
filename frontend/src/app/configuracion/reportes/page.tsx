@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/PageHeader'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useToast, ToastContainer, extractErrorMessage } from '@/components/Toast'
 
+type ReportType = 'ytd' | 'monthly' | 'q1' | 'q2' | 'q3' | 'q4'
+
 interface CorporateClient {
   id: string
   company_name: string
@@ -16,8 +18,17 @@ interface CorporateClient {
   contact_email: string
   is_active: boolean
   send_monthly_report: boolean
-  report_type: 'ytd' | 'monthly'
+  report_type: ReportType
 }
+
+const REPORT_TYPE_OPTIONS: { value: ReportType; label: string }[] = [
+  { value: 'ytd', label: 'YTD (acumulado anual)' },
+  { value: 'monthly', label: 'Mensual' },
+  { value: 'q1', label: 'Q1 (Ene–Mar)' },
+  { value: 'q2', label: 'Q2 (Abr–Jun)' },
+  { value: 'q3', label: 'Q3 (Jul–Sep)' },
+  { value: 'q4', label: 'Q4 (Oct–Dic)' },
+]
 
 export default function ReportConfigPage() {
   const router = useRouter()
@@ -61,7 +72,7 @@ export default function ReportConfigPage() {
     patch(client, { send_monthly_report: !client.send_monthly_report })
   }
 
-  const handleTypeChange = (client: CorporateClient, type: 'ytd' | 'monthly') => {
+  const handleTypeChange = (client: CorporateClient, type: ReportType) => {
     patch(client, { report_type: type })
   }
 
@@ -133,30 +144,16 @@ export default function ReportConfigPage() {
                       </td>
                       <td className="px-5 py-4 text-gray-600">{c.contact_email}</td>
                       <td className="px-5 py-4">
-                        <div className="inline-flex rounded-md border border-gray-200 overflow-hidden text-xs font-medium">
-                          <button
-                            onClick={() => handleTypeChange(c, 'ytd')}
-                            disabled={saving === c.id || !c.is_active}
-                            className={`px-3 py-1.5 transition-colors disabled:cursor-not-allowed ${
-                              c.report_type === 'ytd'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
-                            }`}
-                          >
-                            YTD
-                          </button>
-                          <button
-                            onClick={() => handleTypeChange(c, 'monthly')}
-                            disabled={saving === c.id || !c.is_active}
-                            className={`px-3 py-1.5 border-l border-gray-200 transition-colors disabled:cursor-not-allowed ${
-                              c.report_type === 'monthly'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
-                            }`}
-                          >
-                            Mensual
-                          </button>
-                        </div>
+                        <select
+                          value={c.report_type}
+                          onChange={(e) => handleTypeChange(c, e.target.value as ReportType)}
+                          disabled={saving === c.id || !c.is_active}
+                          className="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {REPORT_TYPE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <button
@@ -182,7 +179,9 @@ export default function ReportConfigPage() {
           )}
 
           <p className="mt-4 text-xs text-gray-400">
-            <strong>YTD</strong>: acumula desde enero hasta el mes actual. <strong>Mensual</strong>: solo el mes anterior.
+            <strong>YTD</strong>: acumula desde enero hasta el mes actual.{' '}
+            <strong>Mensual</strong>: solo el mes anterior.{' '}
+            <strong>Q1–Q4</strong>: el trimestre correspondiente (se envía al inicio del trimestre siguiente).
             Las empresas inactivas no pueden recibir reportes — actívalas desde{' '}
             <button onClick={() => router.push('/empresas')} className="text-indigo-500 underline">
               Empresas

@@ -13,7 +13,14 @@ class CorporateClient(OrganizationMixin, BaseModel):
     address = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     send_monthly_report = models.BooleanField(default=False)
-    REPORT_TYPE_CHOICES = [('ytd', 'Year to Date'), ('monthly', 'Mensual')]
+    REPORT_TYPE_CHOICES = [
+        ('ytd', 'Year to Date'),
+        ('monthly', 'Mensual'),
+        ('q1', 'Q1 (Ene–Mar)'),
+        ('q2', 'Q2 (Abr–Jun)'),
+        ('q3', 'Q3 (Jul–Sep)'),
+        ('q4', 'Q4 (Oct–Dic)'),
+    ]
     report_type = models.CharField(max_length=10, choices=REPORT_TYPE_CHOICES, default='ytd')
 
     class Meta:
