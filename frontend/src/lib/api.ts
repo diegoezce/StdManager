@@ -269,6 +269,11 @@ class APIClient {
     return response.data
   }
 
+  async patchCorporateClient(id: string, data: Partial<Record<string, any>>) {
+    const response = await this.axiosInstance.patch(`/corporate-clients/${id}/`, data)
+    return response.data
+  }
+
   async deleteCorporateClient(id: string) {
     await this.axiosInstance.delete(`/corporate-clients/${id}/`)
   }

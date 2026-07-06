@@ -32,30 +32,21 @@ class Command(BaseCommand):
     help = 'Send monthly attendance reports to all corporate client HR contacts.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--month', type=int, help='Month number (1-12). Defaults to last month.')
-        parser.add_argument('--year', type=int, help='Year (e.g. 2026). Defaults to last month\'s year.')
+        parser.add_argument('--year', type=int, help='Year (e.g. 2026). Defaults to current year.')
         parser.add_argument('--dry-run', action='store_true', help='Print emails to stdout instead of sending.')
         parser.add_argument('--client-id', type=str, help='Only send for this CorporateClient UUID.')
 
     def handle(self, *args, **options):
         today = date.today()
-
-        # Resolve target month
-        if options['month'] and options['year']:
-            month = options['month']
-            year = options['year']
-        else:
-            # Last month
-            if today.month == 1:
-                month, year = 12, today.year - 1
-            else:
-                month, year = today.month - 1, today.year
+        year = options['year'] or today.year
+        date_from = date(year, 1, 1)
+        date_to = date(year, today.month, today.day) if year == today.year else date(year, 12, 31)
 
         dry_run = options['dry_run']
         target_client_id = options.get('client_id')
 
-        month_name = MONTH_NAMES_ES[month]
-        self.stdout.write(f'Sending reports for {month_name} {year} (dry_run={dry_run})')
+        period_label = f'Enero–{MONTH_NAMES_ES[date_to.month]} {year}'
+        self.stdout.write(f'Sending YTD reports for {period_label} (dry_run={dry_run})')
 
         sent = 0
         skipped = 0
@@ -70,7 +61,7 @@ class Command(BaseCommand):
                 clients_qs = clients_qs.filter(id=target_client_id)
 
             for client in clients_qs:
-                result = self._send_report(org, client, month, year, month_name, dry_run)
+                result = self._send_report(org, client, year, date_from, date_to, period_label, dry_run)
                 if result:
                     sent += 1
                 else:
@@ -78,14 +69,14 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Done. Sent: {sent}  Skipped: {skipped}'))
 
-    def _send_report(self, org, client, month, year, month_name, dry_run):
-        # All attendance records for this client's students in the target month
+    def _send_report(self, org, client, year, date_from, date_to, period_label, dry_run):
+        # All attendance records for this client's students in the YTD range
         attendances = Attendance.objects.filter(
             organization=org,
             student__corporate_client=client,
             student__is_active=True,
-            date__year=year,
-            date__month=month,
+            date__gte=date_from,
+            date__lte=date_to,
         ).select_related('student__user', 'group')
 
         if not attendances.exists():
@@ -171,13 +162,13 @@ class Command(BaseCommand):
 
         chart_bar = attendance_bar_chart(students)
         chart_donut = attendance_donut_chart(students)
-        token = signing.dumps({'client_id': str(client.id), 'month': month, 'year': year})
+        token = signing.dumps({'client_id': str(client.id), 'year': year, 'date_from': date_from.isoformat(), 'date_to': date_to.isoformat()})
         base_url = getattr(settings, 'PUBLIC_BASE_URL', '').rstrip('/')
         online_url = f'{base_url}/api/v1/reports/public/{token}/' if base_url else None
 
         context = {
             'company_name': client.company_name,
-            'month_name': month_name,
+            'period_label': period_label,
             'year': year,
             'students': students,
             'groups': groups,
@@ -187,13 +178,14 @@ class Command(BaseCommand):
             'chart_donut': chart_donut,
         }
 
-        subject = f'Reporte Mensual BLEST — {client.company_name} — {month_name} {year}'
+        subject = f'Reporte BLEST — {client.company_name} — {period_label}'
         html_body = render_to_string('emails/monthly_report.html', context)
 
         if dry_run:
             self.stdout.write(f'\n{"="*60}')
             self.stdout.write(f'TO: {client.contact_email}')
             self.stdout.write(f'SUBJECT: {subject}')
+            self.stdout.write(f'Period: {date_from} → {date_to}')
             self.stdout.write(f'Students: {len(students)}  Groups: {len(groups)}')
             for s in students:
                 self.stdout.write(

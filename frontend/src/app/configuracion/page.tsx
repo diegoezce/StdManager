@@ -133,6 +133,20 @@ export default function ConfiguracionPage() {
         </div>
       </form>
 
+      {/* Report configuration */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800 mb-0.5">Reportes YTD</h2>
+          <p className="text-xs text-gray-400">Configura qué empresas reciben el reporte anual acumulado por email.</p>
+        </div>
+        <button
+          onClick={() => router.push('/configuracion/reportes')}
+          className="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-sm font-medium rounded-md transition"
+        >
+          Gestionar →
+        </button>
+      </div>
+
       {/* Teacher payment settings — owner only */}
       {isOwner && (
         <form onSubmit={handleSaveRate} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
