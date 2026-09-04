@@ -2,7 +2,18 @@ from .base import *
 import dj_database_url
 
 DEBUG = False
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
+ALLOWED_HOSTS = [h for h in config('ALLOWED_HOSTS', default='').split(',') if h]
+
+# Render injects RENDER_EXTERNAL_HOSTNAME (the *.onrender.com host) into every
+# web service, and its health-check prober hits that host. Add it so the deploy
+# does not fail with DisallowedHost. NOTE: this only covers the .onrender.com
+# domain — custom domains must be listed explicitly via the ALLOWED_HOSTS env var.
+RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default='')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# CSRF needs the scheme-qualified origin for every allowed host.
+CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h not in ('localhost', '127.0.0.1')]
 
 # Use DATABASE_URL provided by Railway PostgreSQL plugin
 database_url = config('DATABASE_URL', default=None)
@@ -26,7 +37,7 @@ else:
 # Allow frontend origin from env var (Railway)
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',') if config('CORS_ALLOWED_ORIGINS', default='') else []
 
-# Railway terminates SSL at the proxy and forwards HTTP to the container.
+# Railway/Render terminate SSL at the proxy and forward HTTP to the container.
 # SECURE_PROXY_SSL_HEADER lets Django trust the X-Forwarded-Proto header
 # so SECURE_SSL_REDIRECT works correctly without causing an infinite loop.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

@@ -1,0 +1,86 @@
+# Render Blueprint for BLEST (Railway → Render migration)
+# Docker-based, reusing the existing backend + frontend Dockerfiles.
+# Apply from the Render dashboard: New → Blueprint → point at this repo.
+
+databases:
+  # 'starter' is legacy and rejected for new DBs — use basic-256mb.
+  - name: blest-db
+    plan: basic-256mb
+    region: oregon
+    databaseName: blest
+    user: blest
+
+services:
+  # ---- Backend (Django / gunicorn) ----
+  - type: web
+    name: blest-backend
+    runtime: docker
+    plan: starter
+    region: oregon
+    # Backend Dockerfile COPYs `backend/...`, so the build context is the repo root.
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/
+    # Procfile `release` is ignored under Docker on Render; run migrations here.
+    preDeployCommand: python manage.py migrate --no-input
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
+      - key: DEBUG
+        value: "False"
+      - key: TIME_ZONE
+        value: UTC
+      # Render generates a fresh key (invalidates old sessions — users re-login).
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: blest-db
+          property: connectionString
+      # Custom domains only (e.g. api.blestlearning.com). The *.onrender.com host
+      # is added automatically in settings via RENDER_EXTERNAL_HOSTNAME.
+      - key: ALLOWED_HOSTS
+        sync: false
+      # e.g. https://app.blestlearning.com,https://blest-frontend.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      # Email / Mailjet credentials (external) — set by hand.
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: EMAIL_BACKEND
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: MAILJET_API_KEY
+        sync: false
+      - key: MAILJET_API_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+  # ---- Frontend (Next.js standalone) ----
+  - type: web
+    name: blest-frontend
+    runtime: docker
+    plan: starter
+    region: oregon
+    # Frontend Dockerfile COPYs relative paths, so context is the frontend dir.
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # NEXT_PUBLIC_* is baked at build time (declared as ARG in the Dockerfile).
+      # e.g. https://api.blestlearning.com/api/v1  or the backend .onrender.com host.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        sync: false
