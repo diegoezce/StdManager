@@ -126,6 +126,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
   hasRole: (roles: string | string[]) => {
     const user = get().user
     if (!user) return false
+    // super_admin is the top of the role hierarchy, so it passes every role
+    // check (mirrors the backend permission classes).
+    if (user.role === 'super_admin') return true
     const roleArray = Array.isArray(roles) ? roles : [roles]
     return roleArray.includes(user.role)
   },
