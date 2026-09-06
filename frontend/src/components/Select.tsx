@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 
 export interface SelectOption {
@@ -19,9 +20,12 @@ interface SelectProps {
 
 export function Select({ value, onChange, options, placeholder, className, size = 'md' }: SelectProps) {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => setMounted(true), [])
 
   const selected = options.find((o) => o.value === value)
   const isSm = size === 'sm'
@@ -81,7 +85,7 @@ export function Select({ value, onChange, options, placeholder, className, size 
         </svg>
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
           ref={dropdownRef}
           style={dropdownStyle}
@@ -109,7 +113,8 @@ export function Select({ value, onChange, options, placeholder, className, size 
               {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
