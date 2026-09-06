@@ -12,8 +12,15 @@ RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default='')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# CSRF needs the scheme-qualified origin for every allowed host.
-CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h not in ('localhost', '127.0.0.1')]
+# The frontend lives on a different host than this API, so it never shows up in
+# ALLOWED_HOSTS. List its origin(s) here so CORS/CSRF always allow it, even if
+# the CORS_ALLOWED_ORIGINS env var is missing.
+FRONTEND_ORIGINS = ['https://blest.sparkio.me']
+
+# CSRF needs the scheme-qualified origin for every allowed host + the frontend.
+CSRF_TRUSTED_ORIGINS = [
+    f'https://{h}' for h in ALLOWED_HOSTS if h not in ('localhost', '127.0.0.1')
+] + FRONTEND_ORIGINS
 
 # Use DATABASE_URL provided by Railway PostgreSQL plugin
 database_url = config('DATABASE_URL', default=None)
@@ -34,8 +41,10 @@ else:
         }
     }
 
-# Allow frontend origin from env var (Railway)
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',') if config('CORS_ALLOWED_ORIGINS', default='') else []
+# Allow frontend origin from env var, always including the known frontend
+# origin(s) above so a missing/incomplete env var can't break the login.
+_cors_env = [o for o in config('CORS_ALLOWED_ORIGINS', default='').split(',') if o]
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(_cors_env + FRONTEND_ORIGINS))
 
 # Railway/Render terminate SSL at the proxy and forward HTTP to the container.
 # SECURE_PROXY_SSL_HEADER lets Django trust the X-Forwarded-Proto header

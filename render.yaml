@@ -2,14 +2,11 @@
 # Docker-based, reusing the existing backend + frontend Dockerfiles.
 # Apply from the Render dashboard: New → Blueprint → point at this repo.
 
-databases:
-  # 'starter' is legacy and rejected for new DBs — use basic-256mb.
-  - name: blest-db
-    plan: basic-256mb
-    region: oregon
-    databaseName: blest
-    user: blest
-
+# Database lives on shared Supabase (schema "blest"), not Render. DATABASE_URL
+# is set by hand as a secret — see .claude/docs/nuevaDB.md. The Supabase pooler
+# ignores the URL search_path option, so we connect as a dedicated role whose
+# default search_path is the "blest" schema:
+#   postgresql://blest.<ref>:<pass>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
 services:
   # ---- Backend (Django / gunicorn) ----
   - type: web
@@ -33,10 +30,9 @@ services:
       # Render generates a fresh key (invalidates old sessions — users re-login).
       - key: SECRET_KEY
         generateValue: true
+      # Supabase pooler URL, connecting as the "blest" role (search_path=blest).
       - key: DATABASE_URL
-        fromDatabase:
-          name: blest-db
-          property: connectionString
+        sync: false
       # Custom domains only (e.g. api.blestlearning.com). The *.onrender.com host
       # is added automatically in settings via RENDER_EXTERNAL_HOSTNAME.
       - key: ALLOWED_HOSTS
