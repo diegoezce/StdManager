@@ -48,8 +48,11 @@ class TeacherViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdmin]
 
     def get_queryset(self):
+        # Only list actual teachers — a leftover Teacher row from someone whose
+        # role changed away from teacher must not appear in the picker.
         return Teacher.objects.filter(
             organization=self.request.user.organization,
+            user__role='teacher',
         ).select_related('user')
 
     def perform_create(self, serializer):
@@ -69,11 +72,15 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        # Only list users who are actually students — a user whose role changed
+        # to teacher can keep a leftover Student row, and it must not appear in
+        # the students list.
         if user.role == 'super_admin':
-            return Student.objects.select_related('user', 'corporate_client')
+            return Student.objects.filter(user__role='student').select_related('user', 'corporate_client')
         if user.role in ['owner', 'manager', 'admin']:
             return Student.objects.filter(
                 organization=user.organization,
+                user__role='student',
             ).select_related('user', 'corporate_client')
         elif user.role == 'student':
             return Student.objects.filter(user=user).select_related('user', 'corporate_client')
