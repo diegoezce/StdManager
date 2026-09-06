@@ -8,22 +8,22 @@ class IsSuperAdmin(permissions.BasePermission):
 
 class IsOwner(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role == 'owner'
+        return request.user and request.user.is_authenticated and request.user.role in ['super_admin', 'owner']
 
 
 class IsOwnerOrManager(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['owner', 'manager', 'admin']
+        return request.user and request.user.is_authenticated and request.user.role in ['super_admin', 'owner', 'manager', 'admin']
 
 
 class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['admin', 'manager', 'owner']
+        return request.user and request.user.is_authenticated and request.user.role in ['super_admin', 'admin', 'manager', 'owner']
 
 
 class IsTeacher(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.role in ['teacher', 'admin', 'manager', 'owner']
+        return request.user and request.user.is_authenticated and request.user.role in ['super_admin', 'teacher', 'admin', 'manager', 'owner']
 
 
 class IsStudent(permissions.BasePermission):
