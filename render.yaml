@@ -72,11 +72,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # NEXT_PUBLIC_* is baked at build time (declared as ARG in the Dockerfile).
-      # e.g. https://api.blestlearning.com/api/v1  or the backend .onrender.com host.
+      # NEXT_PUBLIC_* is baked at build time (declared as ARG in the Dockerfile),
+      # so Render must have these set BEFORE the build. Changing them requires a
+      # rebuild (Clear build cache & deploy) to take effect.
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: https://blest-backend.onrender.com/api/v1
       - key: NEXT_PUBLIC_SITE_URL
-        sync: false
+        value: https://blest.sparkio.me
+      # Public identifier — safe to commit (appears in every OAuth request).
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-        sync: false
+        value: 763927865077-lume08028hejh6ft4q5hg9i5jtkhmvfm.apps.googleusercontent.com
