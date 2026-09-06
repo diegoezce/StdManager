@@ -1687,8 +1687,8 @@ function ChartsReport() {
 function MondlyReport() {
   const { user } = useAuth()
   const isCorporate = user?.role === 'corporate_client'
-  const showDashboard = isCorporate || user?.role === 'owner' || user?.role === 'manager'
-  const canImport = user?.role && ['owner', 'manager', 'admin'].includes(user.role)
+  const showDashboard = isCorporate || ['super_admin', 'owner', 'manager'].includes(user?.role || '')
+  const canImport = user?.role && ['super_admin', 'owner', 'manager', 'admin'].includes(user.role)
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
@@ -1793,7 +1793,7 @@ export default function ReportesPage() {
   const router = useRouter()
   const { user, me } = useAuth()
   const isTeacher = user?.role === 'teacher'
-  const isOwnerOrManager = user?.role === 'owner' || user?.role === 'manager'
+  const isOwnerOrManager = ['super_admin', 'owner', 'manager', 'admin'].includes(user?.role || '')
   const [activeTab, setActiveTab] = useState<Tab>(isTeacher ? 'teachers' : 'students')
 
   useEffect(() => {

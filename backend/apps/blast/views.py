@@ -596,7 +596,7 @@ def groups_report(request):
 def teachers_report(request):
     """Hours per teacher for a calendar month.
     Full class day = 1h. Empty class session = org.empty_class_rate hours."""
-    if request.user.role not in ('owner', 'manager', 'super_admin', 'teacher'):
+    if request.user.role not in ('super_admin', 'owner', 'manager', 'admin', 'teacher'):
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied()
 
