@@ -95,6 +95,10 @@ export default function GruposPage() {
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!formData.teacher) {
+      toast.error('Seleccioná un profesor')
+      return
+    }
     setIsSaving(true)
 
     try {
@@ -121,6 +125,10 @@ export default function GruposPage() {
   const handleEditGroup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingId) return
+    if (!formData.teacher) {
+      toast.error('Seleccioná un profesor')
+      return
+    }
 
     const currentGroup = groups.find((g) => g.id === editingId)
     if (currentGroup && formData.max_students < currentGroup.enrollment_count) {
